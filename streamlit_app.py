@@ -715,6 +715,132 @@ def plot_daily_throughput(all_metrics: List[Metrics], p: Dict, active_roles: Lis
     plt.tight_layout()
     return fig
 
+def plot_response_time_distribution(all_metrics: List[Metrics], p: Dict):
+    """
+    Line graph showing distribution of task completion times in 3-hour bins up to 48 hours.
+    """
+    fig, ax = plt.subplots(figsize=(8, 4), dpi=100)
+    
+    # Define bins: 0-3, 3-6, 6-9, ..., 45-48 hours
+    bin_edges_hours = np.arange(0, 51, 3)  # 0, 3, 6, 9, ..., 48
+    bin_edges_minutes = bin_edges_hours * 60
+    num_bins = len(bin_edges_hours) - 1
+    
+    # Collect histogram data from each replication
+    bin_counts_per_rep = []
+    
+    for metrics in all_metrics:
+        comp_times = metrics.task_completion_time
+        arr_times = metrics.task_arrival_time
+        done_ids = set(comp_times.keys())
+        
+        if len(done_ids) > 0:
+            turnaround_times = [comp_times[k] - arr_times.get(k, comp_times[k]) for k in done_ids]
+            counts, _ = np.histogram(turnaround_times, bins=bin_edges_minutes)
+            bin_counts_per_rep.append(counts)
+        else:
+            bin_counts_per_rep.append(np.zeros(num_bins))
+    
+    # Calculate mean and std for each bin
+    bin_counts_array = np.array(bin_counts_per_rep)
+    mean_counts = np.mean(bin_counts_array, axis=0)
+    std_counts = np.std(bin_counts_array, axis=0)
+    
+    # Create x-axis positions (center of each bin)
+    bin_centers = (bin_edges_hours[:-1] + bin_edges_hours[1:]) / 2
+    
+    # Plot line with markers
+    ax.plot(bin_centers, mean_counts, color='#1f77b4', linewidth=2.5, 
+            marker='o', markersize=6, label='Mean Task Count', alpha=0.9)
+    
+    # Add confidence band (±1 SD)
+    upper_bound = mean_counts + std_counts
+    lower_bound = np.maximum(0, mean_counts - std_counts)
+    ax.fill_between(bin_centers, lower_bound, upper_bound, color='#1f77b4', alpha=0.15)
+    
+    ax.set_xlabel('Response Time (hours)', fontsize=11, fontweight='bold')
+    ax.set_ylabel('Number of Tasks', fontsize=11, fontweight='bold')
+    ax.set_title('Distribution of Task Completion Times', fontsize=12, fontweight='bold')
+    ax.set_xlim(0, 48)
+    ax.set_ylim(bottom=0)
+    ax.legend(loc='best', fontsize=9, framealpha=0.9)
+    ax.grid(True, alpha=0.3, linestyle=':')
+    
+    plt.tight_layout()
+    return fig
+
+def plot_completion_by_day(all_metrics: List[Metrics], p: Dict):
+    """
+    Bar chart showing number of tasks completed same day, +1 day, +2 days, +3 days.
+    """
+    fig, ax = plt.subplots(figsize=(6, 4), dpi=100)
+    
+    categories = ['Same Day', '+1 Day', '+2 Days', '+3 Days', '+4+ Days']
+    
+    # Collect counts from each replication
+    counts_per_rep = {cat: [] for cat in categories}
+    
+    for metrics in all_metrics:
+        comp_times = metrics.task_completion_time
+        arr_times = metrics.task_arrival_time
+        done_ids = set(comp_times.keys())
+        
+        category_counts = {cat: 0 for cat in categories}
+        
+        for task_id in done_ids:
+            arrival_time = arr_times.get(task_id, comp_times[task_id])
+            completion_time = comp_times[task_id]
+            
+            arrival_day = int(arrival_time // DAY_MIN)
+            completion_day = int(completion_time // DAY_MIN)
+            days_diff = completion_day - arrival_day
+            
+            if days_diff == 0:
+                category_counts['Same Day'] += 1
+            elif days_diff == 1:
+                category_counts['+1 Day'] += 1
+            elif days_diff == 2:
+                category_counts['+2 Days'] += 1
+            elif days_diff == 3:
+                category_counts['+3 Days'] += 1
+            else:
+                category_counts['+4+ Days'] += 1
+        
+        for cat in categories:
+            counts_per_rep[cat].append(category_counts[cat])
+    
+    # Calculate mean and std for each category
+    means = [np.mean(counts_per_rep[cat]) for cat in categories]
+    stds = [np.std(counts_per_rep[cat]) for cat in categories]
+    
+    # Color gradient from green (good) to red (bad)
+    colors = ['#2ecc71', '#f39c12', '#e67e22', '#e74c3c', '#c0392b']
+    
+    x = np.arange(len(categories))
+    bars = ax.bar(x, means, color=colors, alpha=0.8, width=0.6)
+    
+    # Add error bars
+    ax.errorbar(x, means, yerr=stds, fmt='none', ecolor='black', capsize=5, alpha=0.6)
+    
+    ax.set_xlabel('Time to Completion', fontsize=11, fontweight='bold')
+    ax.set_ylabel('Number of Tasks', fontsize=11, fontweight='bold')
+    ax.set_title('Task Completion Timeline', fontsize=12, fontweight='bold')
+    ax.set_xticks(x)
+    ax.set_xticklabels(categories, fontsize=9)
+    ax.set_ylim(bottom=0)
+    ax.grid(True, alpha=0.3, axis='y')
+    
+    # Add value labels on bars
+    for i, (bar, mean, std) in enumerate(zip(bars, means, stds)):
+        height = bar.get_height()
+        if height > 0:
+            ax.text(bar.get_x() + bar.get_width()/2., height + std + 2,
+                    f'{mean:.0f}±{std:.0f}',
+                    ha='center', va='bottom', fontsize=8, fontweight='bold')
+    
+    plt.tight_layout()
+    return fig
+
 def plot_rework_impact(all_metrics: List[Metrics], p: Dict, active_roles: List[str]):
     fig, ax = plt.subplots(figsize=(6, 3), dpi=80)
     original_time = {r: [] for r in active_roles}
@@ -1738,7 +1864,40 @@ elif st.session_state.wizard_step == 2:
              title="How is Queue Backlog Trend graph calculated?")
     
     st.markdown("---")
+
+    st.markdown("## Response Times (Patient Care)")
+    st.caption("How quickly are tasks being completed?")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        fig_response_dist = plot_response_time_distribution(all_metrics, p)
+        st.pyplot(fig_response_dist, use_container_width=False)
+        plt.close(fig_response_dist)
+
+    with col2:
+        fig_completion_days = plot_completion_by_day(all_metrics, p)
+        st.pyplot(fig_completion_days, use_container_width=False)
+        plt.close(fig_completion_days)
+
+    col1, col2 = st.columns(2)
+    with col1:
+        help_icon("**Calculation:** Groups all completed tasks into 3-hour bins (0-3hrs, 3-6hrs, etc.) up to 48 hours. "
+             "Shows mean count ± SD across replications.\n\n"
+             "**Interpretation:** Peak near 0 hours = fast response times. Long tail = delays. "
+             "Shaded area shows variability across simulation runs.",
+             title="How is Response Time Distribution calculated?")
+    with col2:
+        help_icon("**Calculation:** Counts tasks by completion time relative to arrival day:\n"
+             "• Same Day = completed same operational day\n"
+             "• +1 Day = completed 1 operational day later\n"
+             "• +2/+3 Days = 2-3 days later\n"
+             "• +4+ Days = 4 or more days later\n\n"
+             "**Interpretation:** More green (same day) = better patient care. "
+             "Red bars (+3/+4 days) indicate significant delays.",
+             title="How is Task Completion Timeline calculated?")
     
+    st.markdown("---")
+
     st.markdown("## Burnout & Workload Indicators")
     st.caption("Which roles are at risk of being overwhelmed?")
     
