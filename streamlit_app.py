@@ -1257,52 +1257,53 @@ if st.session_state.wizard_step == 1:
         st.caption("Configure staffing, arrivals, and availability for each role")
     
         with st.expander("Administrative staff", expanded=False):
+        with st.expander("Administrative staff", expanded=False):
             cFD1, cFD2, cFD3 = st.columns(3)
             with cFD1:
                 fd_cap_form = st.number_input("Number working per day", 0, 50, _init_ss("fd_cap", 3), 1, "%d", key="fd_cap_input",
-                                                       help="Number of Administrative staff staff")
+                                               help="Number of Administrative staff staff")
             with cFD2:
                 arr_fd = st.number_input("Volume", 0, 500, _init_ss("arr_fd", 4), 1, "%d", disabled=(fd_cap_form==0), key="arr_fd_input",
-                                     help="Average number of tasks per hour")
+                             help="Average number of tasks per hour")
             with cFD3:
                 avail_fd = st.number_input("Availability (min/day)", 0, 480, _init_ss("avail_fd", 400), 1, "%d", disabled=(fd_cap_form==0), key="avail_fd_input",
-                          help="Minutes per day available for work (max = hours open × 60)")
-    
+                               help="Minutes per day available for work (max = hours open × 60)")
+
         with st.expander("Nurses", expanded=False):
             cNU1, cNU2, cNU3 = st.columns(3)
             with cNU1:
                 nu_cap_form = st.number_input("Number working per day", 0, 50, _init_ss("nurse_cap", 3), 1, "%d", key="nurse_cap_input",
-                                                          help="Number of nurses or medical assistants")
+                                                  help="Number of nurses or medical assistants")
             with cNU2:
                 arr_nu = st.number_input("Volume", 0, 500, _init_ss("arr_nu", 3), 1, "%d", disabled=(nu_cap_form==0), key="arr_nu_input",
-                                     help="Average number of tasks per hour")
+                             help="Average number of tasks per hour")
             with cNU3:
-                avail_fd = st.number_input("Availability (min/day)", 0, 480, _init_ss("avail_fd", 400), 1, "%d", disabled=(nu_cap_form==0), key="avail_nu_input",
-                          help="Minutes per day available for work (max = hours open × 60)")
-    
+                avail_nu = st.number_input("Availability (min/day)", 0, 480, _init_ss("avail_nu", 400), 1, "%d", disabled=(nu_cap_form==0), key="avail_nu_input",
+                               help="Minutes per day available for work (max = hours open × 60)")
+
         with st.expander("Doctors", expanded=False):
             cPR1, cPR2, cPR3 = st.columns(3)
             with cPR1:
                 pr_cap_form = st.number_input("Number working per day", 0, 50, _init_ss("provider_cap", 2), 1, "%d", key="provider_cap_input",
-                                                             help="Number of Doctors")
+                                                     help="Number of Doctors")
             with cPR2:
                 arr_pr = st.number_input("Volume", 0, 500, _init_ss("arr_pr", 2), 1, "%d", disabled=(pr_cap_form==0), key="arr_pr_input",
-                                     help="Average number of tasks per hour")
+                             help="Average number of tasks per hour")
             with cPR3:
-                avail_fd = st.number_input("Availability (min/day)", 0, 480, _init_ss("avail_fd", 400), 1, "%d", disabled=(pr_cap_form==0), key="avail_pr_input",
-                          help="Minutes per day available for work (max = hours open × 60)")
-    
+                avail_pr = st.number_input("Availability (min/day)", 0, 480, _init_ss("avail_pr", 400), 1, "%d", disabled=(pr_cap_form==0), key="avail_pr_input",
+                               help="Minutes per day available for work (max = hours open × 60)")
+
         with st.expander("Other staff", expanded=False):
             cBO1, cBO2, cBO3 = st.columns(3)
             with cBO1:
                 bo_cap_form = st.number_input("Number working per day", 0, 50, _init_ss("backoffice_cap", 2), 1, "%d", key="bo_cap_input",
-                                                       help="Number of Other staff staff")
+                                               help="Number of Other staff staff")
             with cBO2:
                  arr_bo = st.number_input("Volume", 0, 500, _init_ss("arr_bo", 2), 1, "%d", disabled=(bo_cap_form==0), key="arr_bo_input",
-                                     help="Average number of tasks per hour")
+                             help="Average number of tasks per hour")
             with cBO3:
-                avail_fd = st.number_input("Availability (min/day)", 0, 480, _init_ss("avail_fd", 400), 1, "%d", disabled=(bo_cap_form==0), key="avail_bo_input",
-                          help="Minutes per day available for work (max = hours open × 60)")
+                avail_bo = st.number_input("Availability (min/day)", 0, 480, _init_ss("avail_bo", 400), 1, "%d", disabled=(bo_cap_form==0), key="avail_bo_input",
+                               help="Minutes per day available for work (max = hours open × 60)")
 
         st.markdown("### Simulation Settings")
         st.caption("Configure variability and number of simulation runs")
