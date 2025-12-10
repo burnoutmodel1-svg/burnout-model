@@ -908,7 +908,7 @@ def plot_daily_workload(all_metrics: List[Metrics], p: Dict, active_roles: List[
 
 def plot_burnout_over_days(all_metrics: List[Metrics], p: Dict, active_roles: List[str]):
     """
-    Line graph showing burnout score by role over days (daily snapshot).
+    Line graph showing burnout score by role over days (cumulative metrics up to each day).
     """
     fig, ax = plt.subplots(figsize=(8, 4), dpi=100)
     colors = {'Administrative staff': '#1f77b4', 'Nurse': '#ff7f0e', 'Doctors': '#2ca02c', 'Other staff': '#d62728'}
@@ -942,50 +942,65 @@ def plot_burnout_over_days(all_metrics: List[Metrics], p: Dict, active_roles: Li
         if capacity == 0:
             continue
         
+        avail_minutes_per_day = p.get("availability_per_day", {}).get(role, open_minutes_per_day)
+        available_capacity_per_day = capacity * avail_minutes_per_day
+        
         for metrics in all_metrics:
+            # Track cumulative metrics up to each day
+            cumulative_service_time = 0.0
+            cumulative_loops = 0
+            cumulative_tasks_completed = 0
+            cumulative_same_day = 0
+            
+            # We need to process events chronologically to build up daily metrics
+            loop_counts_map = {
+                "Administrative staff": "loop_fd_insufficient",
+                "Nurse": "loop_nurse_insufficient",
+                "Doctors": "loop_provider_insufficient",
+                "Other staff": "loop_backoffice_insufficient"
+            }
+            
             for d in range(num_days):
-                start_t = d * DAY_MIN
-                end_t = start_t + open_minutes_per_day
+                day_start = d * DAY_MIN
+                day_end = (d + 1) * DAY_MIN
                 
-                # Calculate metrics for this day only
-                # Service time on this day
-                day_service_time = 0.0
-                for timestamp, role_logged in zip(metrics.time_stamps, [role]*len(metrics.time_stamps)):
-                    if start_t <= timestamp < end_t:
-                        # Approximate service time contribution
-                        pass  # Service time is accumulated, hard to split by day
+                # Accumulate service time for this role up to this day
+                # (Approximation: divide total by days and multiply by current day)
+                cumulative_service_time = metrics.service_time_sum[role] * (d + 1) / num_days
                 
-                # Simplified: use average daily metrics
-                total_service = metrics.service_time_sum[role]
-                avg_daily_service = total_service / num_days
+                # Accumulate loops up to this day
+                total_loops = getattr(metrics, loop_counts_map[role])
+                cumulative_loops = total_loops * (d + 1) / num_days
                 
-                # Utilization
-                avail_minutes_per_day = p.get("availability_per_day", {}).get(role, open_minutes_per_day)
-                available_capacity = capacity * avail_minutes_per_day
-                util = min(1.0, avg_daily_service / max(1, available_capacity))
+                # Count tasks completed up to end of this day
+                for task_id, comp_time in metrics.task_completion_time.items():
+                    if comp_time < day_end:
+                        cumulative_tasks_completed += 1
+                        # Check if same day
+                        arr_time = metrics.task_arrival_time.get(task_id, comp_time)
+                        if int(arr_time // DAY_MIN) == int(comp_time // DAY_MIN):
+                            cumulative_same_day += 1
                 
-                # Availability stress
+                # Calculate utilization (cumulative)
+                days_so_far = d + 1
+                total_capacity = available_capacity_per_day * days_so_far
+                util = min(1.0, cumulative_service_time / max(1, total_capacity))
+                
+                # Availability stress (constant)
                 avail_stress = (open_minutes_per_day - float(avail_minutes_per_day)) / open_minutes_per_day
                 avail_stress = min(max(avail_stress, 0.0), 1.0)
                 
-                # Rework (simplified - divide total by days)
-                loop_counts = {
-                    "Administrative staff": metrics.loop_fd_insufficient,
-                    "Nurse": metrics.loop_nurse_insufficient,
-                    "Doctors": metrics.loop_provider_insufficient,
-                    "Other staff": metrics.loop_backoffice_insufficient
-                }
-                loops = loop_counts.get(role, 0) / num_days
+                # Rework percentage
                 svc_time = {
                     "Administrative staff": p["svc_frontdesk"],
                     "Nurse": p["svc_nurse"],
                     "Doctors": p["svc_provider"],
                     "Other staff": p["svc_backoffice"]
                 }[role]
-                estimated_rework = loops * max(0.0, svc_time) * 0.5
-                rework_pct = min(1.0, (estimated_rework / max(1, avg_daily_service)) if avg_daily_service > 0 else 0.0)
+                estimated_rework = cumulative_loops * max(0.0, svc_time) * 0.5
+                rework_pct = min(1.0, (estimated_rework / max(1, cumulative_service_time)) if cumulative_service_time > 0 else 0.0)
                 
-                # Queue volatility (use overall since hard to split)
+                # Queue volatility (use overall - can't split easily)
                 queue_lengths = metrics.queues[role]
                 if len(queue_lengths) > 1:
                     q_mean = np.mean(queue_lengths)
@@ -995,20 +1010,13 @@ def plot_burnout_over_days(all_metrics: List[Metrics], p: Dict, active_roles: Li
                 else:
                     queue_volatility = 0.0
                 
-                # Completion rate (simplified)
-                done_ids = set(metrics.task_completion_time.keys())
-                if len(done_ids) > 0:
-                    same_day = sum(1 for k in done_ids 
-                                 if int(metrics.task_arrival_time.get(k, 0) // DAY_MIN) == 
-                                    int(metrics.task_completion_time[k] // DAY_MIN))
-                    completion_rate = same_day / len(done_ids)
-                else:
-                    completion_rate = 0.0
+                # Completion rate
+                completion_rate = (cumulative_same_day / max(1, cumulative_tasks_completed)) if cumulative_tasks_completed > 0 else 0.0
                 
                 # Throughput
-                tasks_completed = len(done_ids) / num_days
+                tasks_per_day = cumulative_tasks_completed / days_so_far
                 expected_throughput = p["arrivals_per_hour_by_role"].get(role, 1) * open_minutes_per_day / 60.0
-                throughput_ratio = tasks_completed / max(1e-6, expected_throughput)
+                throughput_ratio = tasks_per_day / max(1e-6, expected_throughput)
                 throughput_deficit = min(1.0, max(0.0, 1.0 - throughput_ratio))
                 
                 # Apply transformations
@@ -1038,6 +1046,10 @@ def plot_burnout_over_days(all_metrics: List[Metrics], p: Dict, active_roles: Li
                 # Calculate burnout
                 burnout_score = sum(norm_weights[k] * components[k] for k in components.keys())
                 daily_burnout_per_rep[d].append(burnout_score)
+                
+                # Reset cumulative counters for next day's calculation
+                cumulative_tasks_completed = 0
+                cumulative_same_day = 0
         
         # Calculate mean and std
         means = [np.mean(daily_burnout_per_rep[d]) if daily_burnout_per_rep[d] else 0 
