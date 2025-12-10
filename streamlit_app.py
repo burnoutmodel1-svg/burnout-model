@@ -929,20 +929,8 @@ def plot_overtime_needed(all_metrics: List[Metrics], p: Dict, active_roles: List
 
 def create_kpi_banner(all_metrics: List[Metrics], p: Dict, burnout_data: Dict, active_roles: List[str]):
     """
-    Create a simple one-line banner showing key metrics.
+    Create a simple one-line banner showing key burnout metrics.
     """
-    turnaround_times = []
-    for metrics in all_metrics:
-        comp_times = metrics.task_completion_time
-        arr_times = metrics.task_arrival_time
-        done_ids = set(comp_times.keys())
-        
-        if len(done_ids) > 0:
-            tt = [comp_times[k] - arr_times.get(k, comp_times[k]) for k in done_ids]
-            turnaround_times.extend(tt)
-    
-    avg_turnaround = np.mean(turnaround_times) if turnaround_times else 0.0
-    
     # Calculate average component scores across all roles
     all_utilization = []
     all_rework = []
@@ -964,22 +952,18 @@ def create_kpi_banner(all_metrics: List[Metrics], p: Dict, burnout_data: Dict, a
     
     overall_burnout = burnout_data["overall_clinic"]
     
-    col1, col2, col3, col4, col5 = st.columns(5)
+    col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        st.metric("Avg Turnaround", f"{avg_turnaround:.0f} min", 
-                 delta=f"{avg_turnaround/60:.1f} hrs", delta_color="off")
-    
-    with col2:
         st.metric("Overall Burnout", f"{overall_burnout:.1f}")
     
-    with col3:
+    with col2:
         st.metric("Utilization Stress", f"{avg_utilization:.1f}")
     
-    with col4:
+    with col3:
         st.metric("Rework Stress", f"{avg_rework:.1f}")
     
-    with col5:
+    with col4:
         st.metric("Task Switching", f"{avg_task_switching:.1f}")
 
 def help_icon(help_text: str, title: str = None):
@@ -1153,6 +1137,151 @@ def aggregate_replications(p: Dict, all_metrics: List[Metrics], active_roles: Li
         "rework_overview_df": rework_overview_df, "loop_origin_df": loop_origin_df,
         "throughput_full_df": throughput_full_df, "util_df": util_df, "summary_df": summary_df
     }
+
+def create_summary_table(all_metrics: List[Metrics], p: Dict, burnout_data: Dict, active_roles: List[str]):
+    """
+    Create a comprehensive summary table showing key metrics across all categories.
+    """
+    num_reps = len(all_metrics)
+    
+    # Calculate Patient Care metrics
+    turnaround_times_list = []
+    for metrics in all_metrics:
+        comp_times = metrics.task_completion_time
+        arr_times = metrics.task_arrival_time
+        done_ids = set(comp_times.keys())
+        
+        if len(done_ids) > 0:
+            tt = [comp_times[k] - arr_times.get(k, comp_times[k]) for k in done_ids]
+            avg_tt = np.mean(tt)
+            turnaround_times_list.append(avg_tt)
+    
+    mean_turnaround = np.mean(turnaround_times_list) if turnaround_times_list else 0.0
+    std_turnaround = np.std(turnaround_times_list, ddof=1) if len(turnaround_times_list) > 1 else 0.0
+    
+    # Calculate Inefficiency metrics
+    total_reroutes_list = []
+    missing_info_pct_list = []
+    
+    for metrics in all_metrics:
+        # Count re-routes (tasks that went through loops)
+        reroutes = (metrics.loop_fd_insufficient + 
+                   metrics.loop_nurse_insufficient + 
+                   metrics.loop_provider_insufficient + 
+                   metrics.loop_backoffice_insufficient)
+        total_reroutes_list.append(reroutes)
+        
+        # Calculate % of tasks with missing info
+        tasks_with_rework = set()
+        for t, name, step, note, _arr in metrics.events:
+            if step.endswith("INSUFF") or "RECHECK" in step:
+                tasks_with_rework.add(name)
+        
+        done_ids = set(metrics.task_completion_time.keys())
+        if len(done_ids) > 0:
+            missing_info_pct = 100.0 * len(tasks_with_rework & done_ids) / len(done_ids)
+            missing_info_pct_list.append(missing_info_pct)
+        else:
+            missing_info_pct_list.append(0.0)
+    
+    mean_reroutes = np.mean(total_reroutes_list)
+    std_reroutes = np.std(total_reroutes_list, ddof=1) if len(total_reroutes_list) > 1 else 0.0
+    mean_missing_info = np.mean(missing_info_pct_list)
+    std_missing_info = np.std(missing_info_pct_list, ddof=1) if len(missing_info_pct_list) > 1 else 0.0
+    
+    # Calculate Utilization metrics
+    open_time_available = effective_open_minutes(p["sim_minutes"], p["open_minutes"])
+    num_days = p["sim_minutes"] / DAY_MIN
+    
+    util_by_role = {r: [] for r in active_roles}
+    
+    for metrics in all_metrics:
+        for role in active_roles:
+            capacity = {
+                "Administrative staff": p["frontdesk_cap"],
+                "Nurse": p["nurse_cap"],
+                "Doctors": p["provider_cap"],
+                "Other staff": p["backoffice_cap"]
+            }[role]
+            
+            if capacity > 0:
+                total_service = metrics.service_time_sum[role]
+                avail_minutes_per_day = p.get("availability_per_day", {}).get(role, p["open_minutes"])
+                total_available_capacity = capacity * num_days * avail_minutes_per_day
+                util = 100.0 * min(1.0, total_service / max(1, total_available_capacity))
+                util_by_role[role].append(util)
+    
+    # Get Burnout metrics
+    burnout_by_role = {r: burnout_data["by_role"][r]["overall"] for r in active_roles}
+    
+    # Build the table data
+    table_data = []
+    
+    # Patient Care
+    table_data.append({
+        "Focus": "Patient care",
+        "Measure": "Mean response time",
+        "Result": f"{mean_turnaround:.1f} ± {std_turnaround:.1f} min ({mean_turnaround/60:.1f} ± {std_turnaround/60:.1f} hrs)"
+    })
+    
+    # Inefficiency
+    table_data.append({
+        "Focus": "Inefficiency",
+        "Measure": "Re-routes",
+        "Result": f"{mean_reroutes:.1f} ± {std_reroutes:.1f}"
+    })
+    table_data.append({
+        "Focus": "",
+        "Measure": "Missing info",
+        "Result": f"{mean_missing_info:.1f}% ± {std_missing_info:.1f}%"
+    })
+    
+    # Utilization
+    table_data.append({
+        "Focus": "Utilization",
+        "Measure": "Administrative staff",
+        "Result": f"{np.mean(util_by_role['Administrative staff']):.1f}% ± {np.std(util_by_role['Administrative staff'], ddof=1):.1f}%" if util_by_role['Administrative staff'] else "N/A"
+    })
+    table_data.append({
+        "Focus": "",
+        "Measure": "Nurses",
+        "Result": f"{np.mean(util_by_role['Nurse']):.1f}% ± {np.std(util_by_role['Nurse'], ddof=1):.1f}%" if util_by_role['Nurse'] else "N/A"
+    })
+    table_data.append({
+        "Focus": "",
+        "Measure": "Doctors",
+        "Result": f"{np.mean(util_by_role['Doctors']):.1f}% ± {np.std(util_by_role['Doctors'], ddof=1):.1f}%" if util_by_role['Doctors'] else "N/A"
+    })
+    table_data.append({
+        "Focus": "",
+        "Measure": "Other staff",
+        "Result": f"{np.mean(util_by_role['Other staff']):.1f}% ± {np.std(util_by_role['Other staff'], ddof=1):.1f}%" if util_by_role['Other staff'] else "N/A"
+    })
+    
+    # Burnout
+    table_data.append({
+        "Focus": "Burnout",
+        "Measure": "Administrative staff",
+        "Result": f"{burnout_by_role['Administrative staff']:.1f}" if 'Administrative staff' in burnout_by_role else "N/A"
+    })
+    table_data.append({
+        "Focus": "",
+        "Measure": "Nurses",
+        "Result": f"{burnout_by_role['Nurse']:.1f}" if 'Nurse' in burnout_by_role else "N/A"
+    })
+    table_data.append({
+        "Focus": "",
+        "Measure": "Doctors",
+        "Result": f"{burnout_by_role['Doctors']:.1f}" if 'Doctors' in burnout_by_role else "N/A"
+    })
+    table_data.append({
+        "Focus": "",
+        "Measure": "Other staff",
+        "Result": f"{burnout_by_role['Other staff']:.1f}" if 'Other staff' in burnout_by_role else "N/A"
+    })
+    
+    df = pd.DataFrame(table_data)
+    return df
 
 def _excel_engine():
     try:
@@ -1574,19 +1703,23 @@ elif st.session_state.wizard_step == 2:
     events_df = pd.DataFrame(all_events_data)
     
     st.markdown(f"## Results")
-    
+
+    # Summary Table
+    st.markdown("### Summary")
+    summary_df = create_summary_table(all_metrics, p, burnout_data, active_roles)
+    st.dataframe(summary_df, use_container_width=True, hide_index=True)
+
+    st.markdown("---")
+
+    # KPI Banner
     create_kpi_banner(all_metrics, p, burnout_data, active_roles)
-    
+
     help_icon(
-        "**Avg Turnaround:** Mean time from task arrival to completion across all tasks (includes overnight delays).\n\n"
         "**Overall Burnout:** Clinic-wide burnout score (0-100) averaged across all roles.\n\n"
-        "**Burnout Components:**\n"
-        "• **Utilization** - Workload intensity (non-linear: >75% accelerates stress)\n"
-        "• **Availability Stress** - Reduced available work time\n"
-        "• **Rework** - Time spent on corrections and loops\n"
-        "• **Task Switching** - Queue volatility and unpredictability\n"
-        "• **Incompletion** - Tasks not finished same-day\n"
-        "• **Throughput Deficit** - Falling behind expected workload\n\n"
+        "**Component Scores (averaged across roles):**\n"
+        "• **Utilization Stress** - Workload intensity (non-linear: >75% accelerates)\n"
+        "• **Rework Stress** - Time spent on corrections and loops\n"
+        "• **Task Switching** - Queue volatility and unpredictability\n\n"
         "Your custom weights determine how much each factor contributes to the overall burnout score.",
         title="How are the Key Performance Indicators calculated?"
     )
