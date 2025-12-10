@@ -941,13 +941,25 @@ def create_kpi_banner(all_metrics: List[Metrics], p: Dict, burnout_data: Dict, a
     
     avg_turnaround = np.mean(turnaround_times) if turnaround_times else 0.0
     
-    all_ee = [burnout_data["by_role"][r]["emotional_exhaustion"] for r in active_roles]
-    all_dp = [burnout_data["by_role"][r]["depersonalization"] for r in active_roles]
-    all_ra = [burnout_data["by_role"][r]["reduced_accomplishment"] for r in active_roles]
+    # Calculate average component scores across all roles
+    all_utilization = []
+    all_rework = []
+    all_task_switching = []
+    all_incompletion = []
     
-    avg_ee = np.mean(all_ee) if all_ee else 0.0
-    avg_dp = np.mean(all_dp) if all_dp else 0.0
-    avg_ra = np.mean(all_ra) if all_ra else 0.0
+    for r in active_roles:
+        if r in burnout_data["by_role"]:
+            components = burnout_data["by_role"][r].get("components", {})
+            all_utilization.append(components.get("utilization", 0.0))
+            all_rework.append(components.get("rework", 0.0))
+            all_task_switching.append(components.get("task_switching", 0.0))
+            all_incompletion.append(components.get("incompletion", 0.0))
+    
+    avg_utilization = np.mean(all_utilization) if all_utilization else 0.0
+    avg_rework = np.mean(all_rework) if all_rework else 0.0
+    avg_task_switching = np.mean(all_task_switching) if all_task_switching else 0.0
+    avg_incompletion = np.mean(all_incompletion) if all_incompletion else 0.0
+    
     overall_burnout = burnout_data["overall_clinic"]
     
     col1, col2, col3, col4, col5 = st.columns(5)
@@ -960,13 +972,13 @@ def create_kpi_banner(all_metrics: List[Metrics], p: Dict, burnout_data: Dict, a
         st.metric("Overall Burnout", f"{overall_burnout:.1f}")
     
     with col3:
-        st.metric("Emotional Exhaustion", f"{avg_ee:.1f}")
+        st.metric("Utilization Stress", f"{avg_utilization:.1f}")
     
     with col4:
-        st.metric("Depersonalization", f"{avg_dp:.1f}")
+        st.metric("Rework Stress", f"{avg_rework:.1f}")
     
     with col5:
-        st.metric("Reduced Accomplishment", f"{avg_ra:.1f}")
+        st.metric("Task Switching", f"{avg_task_switching:.1f}")
 
 def help_icon(help_text: str, title: str = None):
     if title is None:
