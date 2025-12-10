@@ -1246,7 +1246,7 @@ if st.session_state.wizard_step == 1:
                 arr_fd = st.number_input("Volume", 0, 500, _init_ss("arr_fd", 4), 1, "%d", disabled=(fd_cap_form==0), key="arr_fd_input",
                                      help="Average number of tasks per hour")
             with cFD3:
-                avail_fd = st.number_input("Availability (min/day)", 0, 480, _init_ss("avail_fd", 400), 1, "%d", ...
+                avail_fd = st.number_input("Availability (min/day)", 0, 480, _init_ss("avail_fd", 400), 1, "%d", disabled=(fd_cap_form==0), key="avail_fd_input",
                           help="Minutes per day available for work (max = hours open × 60)")
     
         with st.expander("Nurses", expanded=False):
@@ -1258,7 +1258,7 @@ if st.session_state.wizard_step == 1:
                 arr_nu = st.number_input("Volume", 0, 500, _init_ss("arr_nu", 3), 1, "%d", disabled=(nu_cap_form==0), key="arr_nu_input",
                                      help="Average number of tasks per hour")
             with cNU3:
-                avail_fd = st.number_input("Availability (min/day)", 0, 480, _init_ss("avail_fd", 400), 1, "%d", ...
+                avail_fd = st.number_input("Availability (min/day)", 0, 480, _init_ss("avail_fd", 400), 1, "%d", disabled=(nu_cap_form==0), key="avail_nu_input",
                           help="Minutes per day available for work (max = hours open × 60)")
     
         with st.expander("Doctors", expanded=False):
@@ -1270,7 +1270,7 @@ if st.session_state.wizard_step == 1:
                 arr_pr = st.number_input("Volume", 0, 500, _init_ss("arr_pr", 2), 1, "%d", disabled=(pr_cap_form==0), key="arr_pr_input",
                                      help="Average number of tasks per hour")
             with cPR3:
-                avail_fd = st.number_input("Availability (min/day)", 0, 480, _init_ss("avail_fd", 400), 1, "%d", ...
+                avail_fd = st.number_input("Availability (min/day)", 0, 480, _init_ss("avail_fd", 400), 1, "%d", disabled=(pr_cap_form==0), key="avail_pr_input",
                           help="Minutes per day available for work (max = hours open × 60)")
     
         with st.expander("Other staff", expanded=False):
@@ -1282,7 +1282,7 @@ if st.session_state.wizard_step == 1:
                  arr_bo = st.number_input("Volume", 0, 500, _init_ss("arr_bo", 2), 1, "%d", disabled=(bo_cap_form==0), key="arr_bo_input",
                                      help="Average number of tasks per hour")
             with cBO3:
-                avail_fd = st.number_input("Availability (min/day)", 0, 480, _init_ss("avail_fd", 400), 1, "%d", ...
+                avail_fd = st.number_input("Availability (min/day)", 0, 480, _init_ss("avail_fd", 400), 1, "%d", disabled=(bo_cap_form==0), key="avail_bo_input",
                           help="Minutes per day available for work (max = hours open × 60)")
 
         st.markdown("### Simulation Settings")
@@ -1343,7 +1343,7 @@ if st.session_state.wizard_step == 1:
                 with cFDL2:
                     max_fd_loops = st.number_input("Maximum number of loops", 0, 10, _init_ss("max_fd_loops", 2), 1, "%d", disabled=(fd_cap_form==0), key="fd_max_loops")
                 with cFDL3:
-                    fd_loop_delay = st.slider("Delay to obtain", 0.0, 60.0, _init_ss("fd_loop_delay", 5.0), 0.5, disabled=(fd_cap_form==0), key="fd_delay")
+                    fd_loop_delay = st.slider("Delay to obtain", 0.0, 480.0, _init_ss("fd_loop_delay", 5.0), 0.5, disabled=(fd_cap_form==0), key="fd_delay")
             
                 st.markdown("**Disposition or routing Administrative staff**")
                 fd_route = route_row_ui("Administrative staff", {"Nurse": 0.50, "Doctors": 0.10, "Other staff": 0.10, DONE: 0.30}, 
@@ -1373,7 +1373,7 @@ if st.session_state.wizard_step == 1:
         
             with st.expander("Doctors", expanded=False):
                 st.markdown("**Processing time**")
-                svc_provider = st.slider("Mean Processing time (minutes)", 0.0, 60.0, _init_ss("svc_provider", 7.0), 0.5, disabled=(pr_cap_form==0))
+                svc_provider = st.slider("Mean Processing time (minutes)", 0.0, 480.0, _init_ss("svc_provider", 7.0), 0.5, disabled=(pr_cap_form==0))
             
                 st.markdown("**Rework Loops**")
                 cPRL1, cPRL2, cPRL3 = st.columns(3)
@@ -1382,7 +1382,7 @@ if st.session_state.wizard_step == 1:
                 with cPRL2:
                     max_provider_loops = st.number_input("Maximum number of loops", 0, 10, _init_ss("max_provider_loops", 2), 1, "%d", disabled=(pr_cap_form==0), key="pr_max_loops")
                 with cPRL3:
-                    provider_loop_delay = st.slider("Delay to obtain", 0.0, 60.0, _init_ss("provider_loop_delay", 5.0), 0.5, disabled=(pr_cap_form==0), key="pr_delay")
+                    provider_loop_delay = st.slider("Delay to obtain", 0.0, 480.0, _init_ss("provider_loop_delay", 5.0), 0.5, disabled=(pr_cap_form==0), key="pr_delay")
             
                 st.markdown("**Disposition or routing Doctors**")
                 pr_route = route_row_ui("Doctors", {"Other staff": 0.30, DONE: 0.70}, 
@@ -1391,7 +1391,7 @@ if st.session_state.wizard_step == 1:
         
             with st.expander("Other staff", expanded=False):
                 st.markdown("**Processing time**")
-                svc_backoffice = st.slider("Mean Processing time (minutes)", 0.0, 60.0, _init_ss("svc_backoffice", 5.0), 0.5, disabled=(bo_cap_form==0))
+                svc_backoffice = st.slider("Mean Processing time (minutes)", 0.0, 480.0, _init_ss("svc_backoffice", 5.0), 0.5, disabled=(bo_cap_form==0))
             
                 st.markdown("**Rework Loops**")
                 cBOL1, cBOL2, cBOL3 = st.columns(3)
@@ -1400,7 +1400,7 @@ if st.session_state.wizard_step == 1:
                 with cBOL2:
                     max_backoffice_loops = st.number_input("Maximum number of loops", 0, 10, _init_ss("max_backoffice_loops", 2), 1, "%d", disabled=(bo_cap_form==0), key="bo_max_loops")
                 with cBOL3:
-                    backoffice_loop_delay = st.slider("Delay to obtain", 0.0, 60.0, _init_ss("backoffice_loop_delay", 5.0), 0.5, disabled=(bo_cap_form==0), key="bo_delay")
+                    backoffice_loop_delay = st.slider("Delay to obtain", 0.0, 480.0, _init_ss("backoffice_loop_delay", 5.0), 0.5, disabled=(bo_cap_form==0), key="bo_delay")
             
                 st.markdown("**Disposition or routing Other staff**")
                 bo_route = route_row_ui("Other staff", {"Administrative staff": 0.10, "Nurse": 0.10, "Doctors": 0.10, DONE: 0.70}, 
@@ -1440,8 +1440,8 @@ if st.session_state.wizard_step == 1:
                 provider_cap=pr_cap_form, backoffice_cap=bo_cap_form,
                 arrivals_per_hour_by_role={"Administrative staff": int(arr_fd), "Nurse": int(arr_nu), 
                                           "Doctors": int(arr_pr), "Other staff": int(arr_bo)},
-                availability_per_hour={"Administrative staff": int(avail_fd), "Nurse": int(avail_nu),
-                                      "Doctors": int(avail_pr), "Other staff": int(avail_bo)},
+                availability_per_day={"Administrative staff": int(avail_fd), "Nurse": int(avail_nu),
+                      "Doctors": int(avail_pr), "Other staff": int(avail_bo)},
                 svc_frontdesk=svc_frontdesk, svc_nurse_protocol=svc_nurse_protocol, svc_nurse=svc_nurse,
                 svc_provider=svc_provider, svc_backoffice=svc_backoffice,
                 dist_role={"Administrative staff": "normal", "NurseProtocol": "normal", "Nurse": "exponential",
