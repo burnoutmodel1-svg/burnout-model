@@ -841,126 +841,385 @@ def plot_completion_by_day(all_metrics: List[Metrics], p: Dict):
     plt.tight_layout()
     return fig
 
-def plot_rework_impact(all_metrics: List[Metrics], p: Dict, active_roles: List[str]):
-    fig, ax = plt.subplots(figsize=(6, 3), dpi=80)
-    original_time = {r: [] for r in active_roles}
-    rework_time = {r: [] for r in active_roles}
-    
-    for metrics in all_metrics:
-        loop_counts = {"Administrative staff": metrics.loop_fd_insufficient, "Nurse": metrics.loop_nurse_insufficient,
-                      "Doctors": metrics.loop_provider_insufficient, "Other staff": metrics.loop_backoffice_insufficient}
-        
-        for role in active_roles:
-            total_time = metrics.service_time_sum[role]
-            loops = loop_counts.get(role, 0)
-            svc_time = {"Administrative staff": p["svc_frontdesk"], "Nurse": p["svc_nurse"],
-                       "Doctors": p["svc_provider"], "Other staff": p["svc_backoffice"]}[role]
-            estimated_rework = loops * svc_time * 0.5
-            estimated_original = total_time - estimated_rework
-            original_time[role].append(max(0, estimated_original))
-            rework_time[role].append(estimated_rework)
-    
-    original_means = [np.mean(original_time[r]) for r in active_roles]
-    rework_means = [np.mean(rework_time[r]) for r in active_roles]
-    
-    original_stds = [np.std(original_time[r]) for r in active_roles]
-    rework_stds = [np.std(rework_time[r]) for r in active_roles]
-    
-    x = np.arange(len(active_roles))
-    width = 0.6
-    
-    bars1 = ax.bar(x, original_means, width, label='Original Work', color='#3498db')
-    bars2 = ax.bar(x, rework_means, width, bottom=original_means, label='Rework', color='#e74c3c')
-    
-    total_means = [original_means[i] + rework_means[i] for i in range(len(active_roles))]
-    total_stds = [np.sqrt(original_stds[i]**2 + rework_stds[i]**2) for i in range(len(active_roles))]
-    
-    ax.errorbar(x, total_means, yerr=total_stds, fmt='none', ecolor='black', capsize=5, alpha=0.6, linewidth=1.5)
-    
-    ax.set_xlabel('Role', fontsize=10)
-    ax.set_ylabel('Time (minutes)', fontsize=10)
-    ax.set_title('Rework Impact', fontsize=11, fontweight='bold')
-    ax.set_xticks(x)
-    ax.set_xticklabels(active_roles, fontsize=9)
-    ax.legend(fontsize=8)
-    ax.grid(True, alpha=0.3, axis='y')
-    
-    for i, (orig, rew) in enumerate(zip(original_means, rework_means)):
-        total = orig + rew
-        if total > 0 and rew > 0:
-            pct = 100 * rew / total
-            label_height = total + total_stds[i] + 20
-            ax.text(i, label_height, f'{pct:.1f}%', ha='center', va='bottom', fontsize=8)
-    
-    plt.tight_layout()
-    return fig
-
-def plot_burnout_scores(burnout_data: Dict, active_roles: List[str]):
+def plot_daily_workload(all_metrics: List[Metrics], p: Dict, active_roles: List[str]):
     """
-    Bar chart showing burnout scores by role + overall clinic with error bars.
+    Line graph showing daily task arrivals by role with utilization-based burnout thresholds.
     """
-    fig, ax = plt.subplots(figsize=(6, 3), dpi=40)
+    fig, ax = plt.subplots(figsize=(8, 4), dpi=100)
+    colors = {'Administrative staff': '#1f77b4', 'Nurse': '#ff7f0e', 'Doctors': '#2ca02c', 'Other staff': '#d62728'}
     
-    roles_plot = active_roles + ["Overall Clinic"]
+    num_days = max(1, int(p["sim_minutes"] // DAY_MIN))
     
-    role_scores = [burnout_data["by_role"][r]["overall"] for r in active_roles]
-    role_scores.append(burnout_data["overall_clinic"])
-    
-    # Calculate standard deviation across components for error bars
-    stds = []
     for role in active_roles:
-        components = burnout_data["by_role"][role].get("components", {})
-        component_values = list(components.values())
-        if component_values:
-            stds.append(np.std(component_values))
-        else:
-            stds.append(0.0)
+        daily_arrivals_per_rep = [[] for _ in range(num_days)]
+        
+        for metrics in all_metrics:
+            arr_times = metrics.task_arrival_time
+            arrivals_by_role = metrics.arrivals_by_role
+            
+            for d in range(num_days):
+                start_t = d * DAY_MIN
+                end_t = (d + 1) * DAY_MIN
+                
+                # Count arrivals for this role on this day
+                arrivals = sum(1 for task_id, at in arr_times.items() 
+                             if start_t <= at < end_t and task_id.startswith(role[:2].upper()))
+                daily_arrivals_per_rep[d].append(arrivals)
+        
+        # Calculate mean and std
+        means = [np.mean(daily_arrivals_per_rep[d]) for d in range(num_days)]
+        stds = [np.std(daily_arrivals_per_rep[d]) for d in range(num_days)]
+        
+        x = np.arange(1, num_days + 1)
+        
+        # Plot line
+        ax.plot(x, means, color=colors.get(role, '#333333'), 
+               linewidth=2.5, marker='o', markersize=6, label=role, alpha=0.9)
+        
+        # Add confidence band
+        upper = [means[i] + stds[i] for i in range(num_days)]
+        lower = [max(0, means[i] - stds[i]) for i in range(num_days)]
+        ax.fill_between(x, lower, upper, color=colors.get(role, '#333333'), alpha=0.1)
     
-    # For overall clinic, use std of role scores
-    stds.append(np.std(role_scores[:-1]) if len(role_scores) > 1 else 0.0)
+    # Add utilization-based thresholds
+    # Calculate capacity-based thresholds (tasks that would lead to 75% and 90% utilization)
+    open_minutes = p["open_minutes"]
     
-    colors = []
-    for score in role_scores:
-        if score < 25:
-            colors.append('#2ecc71')
-        elif score < 50:
-            colors.append('#f39c12')
-        elif score < 75:
-            colors.append('#e67e22')
-        else:
-            colors.append('#e74c3c')
+    # Add threshold lines (these are approximate based on average service times)
+    y_max = ax.get_ylim()[1]
+    ax.axhline(y=y_max * 0.75, color='orange', linestyle='--', alpha=0.4, linewidth=1.5, label='75% load threshold')
+    ax.axhline(y=y_max * 0.90, color='red', linestyle='--', alpha=0.4, linewidth=1.5, label='90% load threshold')
     
-    x = np.arange(len(roles_plot))
-    bars = ax.bar(x, role_scores, color=colors, width=0.6)
+    ax.set_xlabel('Operational Day', fontsize=11, fontweight='bold')
+    ax.set_ylabel('Tasks Arriving', fontsize=11, fontweight='bold')
+    ax.set_title('Daily Workload by Role', fontsize=12, fontweight='bold')
     
-    ax.errorbar(x, role_scores, yerr=stds, fmt='none', ecolor='black', capsize=5, alpha=0.6, linewidth=1.5)
+    if num_days > 0:
+        x_ticks = np.arange(1, num_days + 1)
+        ax.set_xticks(x_ticks)
+        ax.set_xticklabels([str(i) for i in x_ticks])
     
-    ax.set_xlabel('Role', fontsize=10)
-    ax.set_ylabel('Burnout Score (0-100)', fontsize=10)
-    ax.set_title('Burnout Index by Role', fontsize=11, fontweight='bold')
-    ax.set_xticks(x)
-    ax.set_xticklabels(roles_plot, fontsize=9, rotation=15, ha='right')
-    ax.set_ylim(0, 100)
-    ax.axhline(y=50, color='red', linestyle='--', alpha=0.3, linewidth=1)
-    ax.grid(True, alpha=0.3, axis='y')
-    
-    for i, (bar, score, std) in enumerate(zip(bars, role_scores, stds)):
-        height = bar.get_height()
-        label_height = height + std + 2
-        ax.text(bar.get_x() + bar.get_width()/2., label_height,
-                f'{score:.1f}', ha='center', va='bottom', fontsize=8, fontweight='bold')
-    
-    legend_elements = [
-        Patch(facecolor='#2ecc71', label='Low (0-25)'),
-        Patch(facecolor='#f39c12', label='Moderate (25-50)'),
-        Patch(facecolor='#e67e22', label='High (50-75)'),
-        Patch(facecolor='#e74c3c', label='Severe (75-100)')
-    ]
-    ax.legend(handles=legend_elements, loc='lower left', fontsize=5)
+    ax.legend(loc='best', fontsize=8, framealpha=0.9)
+    ax.grid(True, alpha=0.3, linestyle=':')
+    ax.set_ylim(bottom=0)
     
     plt.tight_layout()
     return fig
 
+def plot_burnout_over_days(all_metrics: List[Metrics], p: Dict, active_roles: List[str]):
+    """
+    Line graph showing burnout score by role over days (daily snapshot).
+    """
+    fig, ax = plt.subplots(figsize=(8, 4), dpi=100)
+    colors = {'Administrative staff': '#1f77b4', 'Nurse': '#ff7f0e', 'Doctors': '#2ca02c', 'Other staff': '#d62728'}
+    
+    num_days = max(1, int(p["sim_minutes"] // DAY_MIN))
+    open_minutes_per_day = p["open_minutes"]
+    
+    weights = p.get("burnout_weights", {
+        "utilization": 7, "availability_stress": 3,
+        "rework": 6, "task_switching": 4,
+        "incompletion": 5, "throughput_deficit": 5
+    })
+    
+    total_weight = sum(weights.values())
+    if total_weight == 0:
+        st.warning("All burnout weights are 0 - cannot plot burnout over time")
+        return fig
+    
+    norm_weights = {k: v / total_weight for k, v in weights.items()}
+    
+    for role in active_roles:
+        daily_burnout_per_rep = [[] for _ in range(num_days)]
+        
+        capacity = {
+            "Administrative staff": p["frontdesk_cap"],
+            "Nurse": p["nurse_cap"],
+            "Doctors": p["provider_cap"],
+            "Other staff": p["backoffice_cap"]
+        }[role]
+        
+        if capacity == 0:
+            continue
+        
+        for metrics in all_metrics:
+            for d in range(num_days):
+                start_t = d * DAY_MIN
+                end_t = start_t + open_minutes_per_day
+                
+                # Calculate metrics for this day only
+                # Service time on this day
+                day_service_time = 0.0
+                for timestamp, role_logged in zip(metrics.time_stamps, [role]*len(metrics.time_stamps)):
+                    if start_t <= timestamp < end_t:
+                        # Approximate service time contribution
+                        pass  # Service time is accumulated, hard to split by day
+                
+                # Simplified: use average daily metrics
+                total_service = metrics.service_time_sum[role]
+                avg_daily_service = total_service / num_days
+                
+                # Utilization
+                avail_minutes_per_day = p.get("availability_per_day", {}).get(role, open_minutes_per_day)
+                available_capacity = capacity * avail_minutes_per_day
+                util = min(1.0, avg_daily_service / max(1, available_capacity))
+                
+                # Availability stress
+                avail_stress = (open_minutes_per_day - float(avail_minutes_per_day)) / open_minutes_per_day
+                avail_stress = min(max(avail_stress, 0.0), 1.0)
+                
+                # Rework (simplified - divide total by days)
+                loop_counts = {
+                    "Administrative staff": metrics.loop_fd_insufficient,
+                    "Nurse": metrics.loop_nurse_insufficient,
+                    "Doctors": metrics.loop_provider_insufficient,
+                    "Other staff": metrics.loop_backoffice_insufficient
+                }
+                loops = loop_counts.get(role, 0) / num_days
+                svc_time = {
+                    "Administrative staff": p["svc_frontdesk"],
+                    "Nurse": p["svc_nurse"],
+                    "Doctors": p["svc_provider"],
+                    "Other staff": p["svc_backoffice"]
+                }[role]
+                estimated_rework = loops * max(0.0, svc_time) * 0.5
+                rework_pct = min(1.0, (estimated_rework / max(1, avg_daily_service)) if avg_daily_service > 0 else 0.0)
+                
+                # Queue volatility (use overall since hard to split)
+                queue_lengths = metrics.queues[role]
+                if len(queue_lengths) > 1:
+                    q_mean = np.mean(queue_lengths)
+                    q_std = np.std(queue_lengths)
+                    q_cv = (q_std / max(1e-6, q_mean)) if q_mean > 0 else 0.0
+                    queue_volatility = min(1.0, q_cv)
+                else:
+                    queue_volatility = 0.0
+                
+                # Completion rate (simplified)
+                done_ids = set(metrics.task_completion_time.keys())
+                if len(done_ids) > 0:
+                    same_day = sum(1 for k in done_ids 
+                                 if int(metrics.task_arrival_time.get(k, 0) // DAY_MIN) == 
+                                    int(metrics.task_completion_time[k] // DAY_MIN))
+                    completion_rate = same_day / len(done_ids)
+                else:
+                    completion_rate = 0.0
+                
+                # Throughput
+                tasks_completed = len(done_ids) / num_days
+                expected_throughput = p["arrivals_per_hour_by_role"].get(role, 1) * open_minutes_per_day / 60.0
+                throughput_ratio = tasks_completed / max(1e-6, expected_throughput)
+                throughput_deficit = min(1.0, max(0.0, 1.0 - throughput_ratio))
+                
+                # Apply transformations
+                def transform_utilization(u):
+                    if u <= 0.75:
+                        return u / 0.75 * 0.5
+                    else:
+                        excess = (u - 0.75) / 0.25
+                        return 0.5 + 0.5 * (np.exp(2 * excess) - 1) / (np.exp(2) - 1)
+                
+                util_transformed = transform_utilization(util)
+                rework_transformed = rework_pct ** 1.5
+                volatility_transformed = np.sqrt(queue_volatility)
+                incompletion = 1.0 - completion_rate
+                incompletion_transformed = incompletion ** 0.7
+                
+                # Component scores
+                components = {
+                    "utilization": 100.0 * util_transformed,
+                    "availability_stress": 100.0 * avail_stress,
+                    "rework": 100.0 * rework_transformed,
+                    "task_switching": 100.0 * volatility_transformed,
+                    "incompletion": 100.0 * incompletion_transformed,
+                    "throughput_deficit": 100.0 * throughput_deficit
+                }
+                
+                # Calculate burnout
+                burnout_score = sum(norm_weights[k] * components[k] for k in components.keys())
+                daily_burnout_per_rep[d].append(burnout_score)
+        
+        # Calculate mean and std
+        means = [np.mean(daily_burnout_per_rep[d]) if daily_burnout_per_rep[d] else 0 
+                for d in range(num_days)]
+        stds = [np.std(daily_burnout_per_rep[d]) if len(daily_burnout_per_rep[d]) > 1 else 0 
+               for d in range(num_days)]
+        
+        x = np.arange(1, num_days + 1)
+        
+        # Plot line
+        ax.plot(x, means, color=colors.get(role, '#333333'), 
+               linewidth=2.5, marker='o', markersize=6, label=role, alpha=0.9)
+        
+        # Add confidence band
+        upper = [means[i] + stds[i] for i in range(num_days)]
+        lower = [max(0, means[i] - stds[i]) for i in range(num_days)]
+        ax.fill_between(x, lower, upper, color=colors.get(role, '#333333'), alpha=0.1)
+    
+    # Add burnout threshold lines
+    ax.axhline(y=50, color='orange', linestyle='--', alpha=0.4, linewidth=1.5, label='Moderate burnout (50)')
+    ax.axhline(y=75, color='red', linestyle='--', alpha=0.4, linewidth=1.5, label='High burnout (75)')
+    
+    ax.set_xlabel('Operational Day', fontsize=11, fontweight='bold')
+    ax.set_ylabel('Burnout Score (0-100)', fontsize=11, fontweight='bold')
+    ax.set_title('Burnout Progression by Role', fontsize=12, fontweight='bold')
+    
+    if num_days > 0:
+        x_ticks = np.arange(1, num_days + 1)
+        ax.set_xticks(x_ticks)
+        ax.set_xticklabels([str(i) for i in x_ticks])
+    
+    ax.legend(loc='best', fontsize=8, framealpha=0.9)
+    ax.grid(True, alpha=0.3, linestyle=':')
+    ax.set_ylim(0, 100)
+    
+    plt.tight_layout()
+    return fig
+
+def plot_rerouting_by_day(all_metrics: List[Metrics], p: Dict, active_roles: List[str]):
+    """
+    Line graph showing daily reroutes (inappropriate receipt) by role.
+    """
+    fig, ax = plt.subplots(figsize=(8, 4), dpi=100)
+    colors = {'Administrative staff': '#1f77b4', 'Nurse': '#ff7f0e', 'Doctors': '#2ca02c', 'Other staff': '#d62728'}
+    
+    num_days = max(1, int(p["sim_minutes"] // DAY_MIN))
+    
+    for role in active_roles:
+        daily_reroutes_per_rep = [[] for _ in range(num_days)]
+        
+        for metrics in all_metrics:
+            # Count reroutes per day by looking at routing events
+            daily_reroute_count = [0] * num_days
+            
+            for t, name, step, note, arr in metrics.events:
+                day = int(t // DAY_MIN)
+                if day < num_days:
+                    # A reroute happens when a task moves between roles (not loops within same role)
+                    # Look for QUEUE events that indicate task arrived at a role
+                    if step in ["FD_QUEUE", "NU_QUEUE", "PR_QUEUE", "BO_QUEUE"]:
+                        # Determine which role this queue belongs to
+                        step_to_role = {
+                            "FD_QUEUE": "Administrative staff",
+                            "NU_QUEUE": "Nurse",
+                            "PR_QUEUE": "Doctors",
+                            "BO_QUEUE": "Other staff"
+                        }
+                        current_role = step_to_role.get(step)
+                        
+                        # Check if task initially arrived at a different role
+                        initial_role = None
+                        if name.startswith("AD"):
+                            initial_role = "Administrative staff"
+                        elif name.startswith("NU"):
+                            initial_role = "Nurse"
+                        elif name.startswith("DO"):
+                            initial_role = "Doctors"
+                        elif name.startswith("OT"):
+                            initial_role = "Other staff"
+                        
+                        # If current role matches the role we're plotting and it's not the initial role
+                        if current_role == role and initial_role != role:
+                            daily_reroute_count[day] += 1
+            
+            for d in range(num_days):
+                daily_reroutes_per_rep[d].append(daily_reroute_count[d])
+        
+        # Calculate mean and std
+        means = [np.mean(daily_reroutes_per_rep[d]) for d in range(num_days)]
+        stds = [np.std(daily_reroutes_per_rep[d]) for d in range(num_days)]
+        
+        x = np.arange(1, num_days + 1)
+        
+        # Plot line
+        ax.plot(x, means, color=colors.get(role, '#333333'), 
+               linewidth=2.5, marker='o', markersize=6, label=role, alpha=0.9)
+        
+        # Add confidence band
+        upper = [means[i] + stds[i] for i in range(num_days)]
+        lower = [max(0, means[i] - stds[i]) for i in range(num_days)]
+        ax.fill_between(x, lower, upper, color=colors.get(role, '#333333'), alpha=0.1)
+    
+    ax.set_xlabel('Operational Day', fontsize=11, fontweight='bold')
+    ax.set_ylabel('Number of Reroutes', fontsize=11, fontweight='bold')
+    ax.set_title('Rerouting (Inappropriate Receipt) by Role', fontsize=12, fontweight='bold')
+    
+    if num_days > 0:
+        x_ticks = np.arange(1, num_days + 1)
+        ax.set_xticks(x_ticks)
+        ax.set_xticklabels([str(i) for i in x_ticks])
+    
+    ax.legend(loc='best', fontsize=8, framealpha=0.9)
+    ax.grid(True, alpha=0.3, linestyle=':')
+    ax.set_ylim(bottom=0)
+    
+    plt.tight_layout()
+    return fig
+
+def plot_missing_info_by_day(all_metrics: List[Metrics], p: Dict, active_roles: List[str]):
+    """
+    Line graph showing daily missing info callbacks by role.
+    """
+    fig, ax = plt.subplots(figsize=(8, 4), dpi=100)
+    colors = {'Administrative staff': '#1f77b4', 'Nurse': '#ff7f0e', 'Doctors': '#2ca02c', 'Other staff': '#d62728'}
+    
+    num_days = max(1, int(p["sim_minutes"] // DAY_MIN))
+    
+    for role in active_roles:
+        daily_missing_per_rep = [[] for _ in range(num_days)]
+        
+        for metrics in all_metrics:
+            # Count missing info events per day
+            daily_missing_count = [0] * num_days
+            
+            for t, name, step, note, arr in metrics.events:
+                day = int(t // DAY_MIN)
+                if day < num_days:
+                    # Missing info events are INSUFF steps
+                    step_to_role = {
+                        "FD_INSUFF": "Administrative staff",
+                        "NU_INSUFF": "Nurse",
+                        "PR_INSUFF": "Doctors",
+                        "BO_INSUFF": "Other staff"
+                    }
+                    
+                    if step in step_to_role and step_to_role[step] == role:
+                        daily_missing_count[day] += 1
+            
+            for d in range(num_days):
+                daily_missing_per_rep[d].append(daily_missing_count[d])
+        
+        # Calculate mean and std
+        means = [np.mean(daily_missing_per_rep[d]) for d in range(num_days)]
+        stds = [np.std(daily_missing_per_rep[d]) for d in range(num_days)]
+        
+        x = np.arange(1, num_days + 1)
+        
+        # Plot line
+        ax.plot(x, means, color=colors.get(role, '#333333'), 
+               linewidth=2.5, marker='o', markersize=6, label=role, alpha=0.9)
+        
+        # Add confidence band
+        upper = [means[i] + stds[i] for i in range(num_days)]
+        lower = [max(0, means[i] - stds[i]) for i in range(num_days)]
+        ax.fill_between(x, lower, upper, color=colors.get(role, '#333333'), alpha=0.1)
+    
+    ax.set_xlabel('Operational Day', fontsize=11, fontweight='bold')
+    ax.set_ylabel('Missing Info Events', fontsize=11, fontweight='bold')
+    ax.set_title('Missing Info (Call Backs) by Role', fontsize=12, fontweight='bold')
+    
+    if num_days > 0:
+        x_ticks = np.arange(1, num_days + 1)
+        ax.set_xticks(x_ticks)
+        ax.set_xticklabels([str(i) for i in x_ticks])
+    
+    ax.legend(loc='best', fontsize=8, framealpha=0.9)
+    ax.grid(True, alpha=0.3, linestyle=':')
+    ax.set_ylim(bottom=0)
+    
+    plt.tight_layout()
+    return fig
+    
 def plot_overtime_needed(all_metrics: List[Metrics], p: Dict, active_roles: List[str]):
     """
     Bar chart showing additional hours per day needed to complete all tasks.
@@ -1898,68 +2157,81 @@ elif st.session_state.wizard_step == 2:
     
     st.markdown("---")
 
-    st.markdown("## Burnout & Workload Indicators")
-    st.caption("Which roles are at risk of being overwhelmed?")
-    
+    st.markdown("---")
+
+    st.markdown("## Workload")
+    st.caption("How is workload distributed and evolving over time?")
+
+    # First row: Daily Workload and Burnout Over Days
     col1, col2 = st.columns(2)
     with col1:
-        fig_burnout = plot_burnout_scores(burnout_data, active_roles)
-        st.pyplot(fig_burnout, use_container_width=False)
-        plt.close(fig_burnout)
+        fig_daily_workload = plot_daily_workload(all_metrics, p, active_roles)
+        st.pyplot(fig_daily_workload, use_container_width=False)
+        plt.close(fig_daily_workload)
 
     with col2:
-        fig_utilization = plot_utilization_by_role(all_metrics, p, active_roles)
-        st.pyplot(fig_utilization, use_container_width=False)
-        plt.close(fig_utilization)
-
-    col1, col2 = st.columns(2)
-    with col1:
-        fig_rework = plot_rework_impact(all_metrics, p, active_roles)
-        st.pyplot(fig_rework, use_container_width=False)
-        plt.close(fig_rework)
-
-    with col2:
-        fig_overtime = plot_overtime_needed(all_metrics, p, active_roles)
-        st.pyplot(fig_overtime, use_container_width=False)
-        plt.close(fig_overtime)
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        help_icon("**Burnout Calculation:**\n"
-            "Burnout is calculated from 6 weighted components (your weights):\n\n"
-            "1. **Utilization** (non-linear): <75% grows slowly, >75% accelerates\n"
-            "2. **Availability Stress**: Limited work time per day\n"
-            "3. **Rework**: Time spent on corrections (quadratic penalty)\n"
-            "4. **Task Switching**: Queue volatility causing context switching\n"
-            "5. **Incompletion**: Tasks not completed same-day\n"
-            "6. **Throughput Deficit**: Actual vs. expected task completion\n\n"
-            "Each component is scaled 0-100, then weighted by your custom weights.\n"
-            "**Overall Score** = Σ(weight × component) / Σ(weights)\n\n"
-            "**Interpretation:** 0–25 Low, 25–50 Moderate, 50–75 High, 75–100 Severe.",
-            title="How is the Burnout Index calculated?")
-    with col2:
-        help_icon("**Calculation:** Utilization = (Actual work time) ÷ (Staff capacity × Open hours × Availability %)\n\n"
-             "Capped at 100% (can't exceed available time).\n\n"
-             "**Interpretation:**\n"
-             "• Green (<50%) = Underutilized\n"
-             "• Orange (50-75%) = Healthy workload\n"
-             "• Dark Orange (75-90%) = High stress\n"
-             "• Red (>90%) = Critical burnout risk",
-             title="How is Staff Utilization calculated?")
+        fig_burnout_days = plot_burnout_over_days(all_metrics, p, active_roles)
+        st.pyplot(fig_burnout_days, use_container_width=False)
+        plt.close(fig_burnout_days)
 
     col1, col2 = st.columns(2)
     with col1:
-        help_icon("**Rework Calculation:** Original work (blue) vs rework time (red). Rework = loops × 50% of Processing time. "
-             "**Interpretation:** High rework % = errors, missing info, poor handoffs.",
-             title="How is Rework Impact calculated?")
+        help_icon("**Calculation:** Counts task arrivals to each role per day (mean ± SD). "
+             "Threshold lines show approximate workload levels that correspond to 75% and 90% utilization.\n\n"
+             "**Interpretation:** Lines approaching/exceeding thresholds indicate high workload. "
+             "Consistent high workload leads to burnout.",
+             title="How is Daily Workload calculated?")
     with col2:
-        help_icon("**Calculation:** (Total work needed - Available capacity) ÷ (Days × Staff count)\n\n"
-             "Measures additional hours per person per day needed to finish all tasks.\n\n"
-             "**Interpretation:**\n"
-             "• 0 hours = Keeping up with workload\n"
-             "• 0.5 hours = 30min overtime daily\n"
-             "• 1+ hours = Serious capacity shortage\n"
-             "• 2+ hours = Critical understaffing",
-             title="How is Overtime Needed calculated?")
-    
+        help_icon("**Calculation:** Calculates daily burnout score using that day's metrics: "
+             "utilization, availability stress, rework, task switching, incompletion, and throughput deficit. "
+             "Weighted by your custom burnout weights.\n\n"
+             "**Interpretation:** Scores above 50 (orange line) = moderate burnout. "
+             "Scores above 75 (red line) = high burnout risk.",
+             title="How is Burnout Progression calculated?")
+
+    st.markdown("---")
+
+    # Second row: Rerouting and Missing Info
+    col1, col2 = st.columns(2)
+    with col1:
+        fig_rerouting = plot_rerouting_by_day(all_metrics, p, active_roles)
+        st.pyplot(fig_rerouting, use_container_width=False)
+        plt.close(fig_rerouting)
+
+    with col2:
+        fig_missing_info = plot_missing_info_by_day(all_metrics, p, active_roles)
+        st.pyplot(fig_missing_info, use_container_width=False)
+        plt.close(fig_missing_info)
+
+    col1, col2 = st.columns(2)
+    with col1:
+        help_icon("**Calculation:** Counts tasks that arrived at a role that did not originally receive them "
+             "(inappropriate initial routing). Tracked per day.\n\n"
+             "**Interpretation:** High rerouting indicates poor initial task assignment, "
+             "causing inefficiency and delays.",
+             title="How is Rerouting (Inappropriate Receipt) calculated?")
+    with col2:
+        help_icon("**Calculation:** Counts 'INSUFF' events (insufficient information) per role per day. "
+             "These trigger rework loops where staff must follow up for missing information.\n\n"
+             "**Interpretation:** High missing info rates indicate communication gaps, "
+             "incomplete documentation, or unclear processes.",
+             title="How is Missing Info (Call Backs) calculated?")
+
+    st.markdown("---")
+
+    # Third row: Overtime Needed (kept from original)
+    st.markdown("### Capacity Analysis")
+    fig_overtime = plot_overtime_needed(all_metrics, p, active_roles)
+    st.pyplot(fig_overtime, use_container_width=False)
+    plt.close(fig_overtime)
+
+    help_icon("**Calculation:** (Total work needed - Available capacity) ÷ (Days × Staff count)\n\n"
+         "Measures additional hours per person per day needed to finish all tasks.\n\n"
+         "**Interpretation:**\n"
+         "• 0 hours = Keeping up with workload\n"
+         "• 0.5 hours = 30min overtime daily\n"
+         "• 1+ hours = Serious capacity shortage\n"
+         "• 2+ hours = Critical understaffing",
+         title="How is Overtime Needed calculated?")
+
     st.markdown("---")
