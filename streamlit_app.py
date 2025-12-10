@@ -637,7 +637,7 @@ def plot_queue_over_time(all_metrics: List[Metrics], p: Dict, active_roles: List
     if num_days > 0:
         x_ticks = np.arange(1, num_days + 1)
         ax.set_xticks(x_ticks)
-        ax.set_xticklabels([f'Day {i}' for i in x_ticks])
+        ax.set_xticklabels([str(i) for i in x_ticks])
     
     ax.legend(loc='best', fontsize=9, framealpha=0.9)
     ax.grid(True, alpha=0.3, linestyle=':')
