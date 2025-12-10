@@ -1023,26 +1023,17 @@ def aggregate_replications(p: Dict, all_metrics: List[Metrics], active_roles: Li
         for r in active_roles
     ])
     
-    rework_pct_list = []
     loop_counts_lists = {"Administrative Staff": [], "Nurse": [], "Providers": [], "Other": []}
-    
+
     for metrics in all_metrics:
-        rework_tasks = set()
-        for t, name, step, note, _arr in metrics.events:
-            if step.endswith("INSUFF") or "RECHECK" in step:
-                rework_tasks.add(name)
-        
-        done_ids = set(metrics.task_completion_time.keys())
-        rework_pct_list.append(100.0 * len(rework_tasks & done_ids) / max(1, len(done_ids)))
-        
         loop_counts_lists["Administrative Staff"].append(metrics.loop_fd_insufficient)
         loop_counts_lists["Nurse"].append(metrics.loop_nurse_insufficient)
         loop_counts_lists["Providers"].append(metrics.loop_provider_insufficient)
         loop_counts_lists["Other"].append(metrics.loop_backoffice_insufficient)
-    
-    rework_overview_df = pd.DataFrame([
-        {"Metric": "% tasks with any rework", "Value": fmt_mean_std_pct(rework_pct_list)}
-    ])
+
+    total_loops = [sum(loop_counts_lists[r][i] for r in ROLES) for i in range(num_reps)]
+    rework_pct_list = [100.0 * total_loops[i] / max(1, len(all_metrics[i].task_completion_time)) 
+                   for i in range(num_reps)]
     
     total_loops_list = [sum(loop_counts_lists[r][i] for r in ROLES) for i in range(num_reps)]
     loop_origin_df = pd.DataFrame([
@@ -1139,7 +1130,7 @@ def _excel_engine():
 # Streamlit UI
 # =============================
 st.set_page_config(page_title="Community Health Center Workflow Model", layout="wide")
-st.title("HSyE Burnout Grant - DES Model for Community Health Centers")
+st.title("Community Health Center Workflow Model")
 st.caption("By Ines Sereno")
 
 if "wizard_step" not in st.session_state:
