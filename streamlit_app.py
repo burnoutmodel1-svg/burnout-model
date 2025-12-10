@@ -1793,7 +1793,7 @@ if st.session_state.wizard_step == 1:
                 arr_fd = st.number_input("Volume", 0, 500, _init_ss("arr_fd", 4), 1, "%d", disabled=(fd_cap_form==0), key="arr_fd_input",
                              help="Average number of tasks per hour")
             with cFD3:
-                avail_fd = st.number_input("Availability (min/day)", 0, 480, _init_ss("avail_fd", 400), 1, "%d", disabled=(fd_cap_form==0), key="avail_fd_input",
+                avail_fd = st.number_input("Availability (min/day)", 0, 480, _init_ss("avail_fd", 240), 1, "%d", disabled=(fd_cap_form==0), key="avail_fd_input",
                                help="Minutes per day available for work (max = hours open × 60)")
 
         with st.expander("Nurses", expanded=False):
@@ -1805,7 +1805,7 @@ if st.session_state.wizard_step == 1:
                 arr_nu = st.number_input("Volume", 0, 500, _init_ss("arr_nu", 3), 1, "%d", disabled=(nu_cap_form==0), key="arr_nu_input",
                              help="Average number of tasks per hour")
             with cNU3:
-                avail_nu = st.number_input("Availability (min/day)", 0, 480, _init_ss("avail_nu", 400), 1, "%d", disabled=(nu_cap_form==0), key="avail_nu_input",
+                avail_nu = st.number_input("Availability (min/day)", 0, 480, _init_ss("avail_nu", 120), 1, "%d", disabled=(nu_cap_form==0), key="avail_nu_input",
                                help="Minutes per day available for work (max = hours open × 60)")
 
         with st.expander("Doctors", expanded=False):
@@ -1817,7 +1817,7 @@ if st.session_state.wizard_step == 1:
                 arr_pr = st.number_input("Volume", 0, 500, _init_ss("arr_pr", 2), 1, "%d", disabled=(pr_cap_form==0), key="arr_pr_input",
                              help="Average number of tasks per hour")
             with cPR3:
-                avail_pr = st.number_input("Availability (min/day)", 0, 480, _init_ss("avail_pr", 400), 1, "%d", disabled=(pr_cap_form==0), key="avail_pr_input",
+                avail_pr = st.number_input("Availability (min/day)", 0, 480, _init_ss("avail_pr", 60), 1, "%d", disabled=(pr_cap_form==0), key="avail_pr_input",
                                help="Minutes per day available for work (max = hours open × 60)")
 
         with st.expander("Other staff", expanded=False):
@@ -1829,7 +1829,7 @@ if st.session_state.wizard_step == 1:
                  arr_bo = st.number_input("Volume", 0, 500, _init_ss("arr_bo", 2), 1, "%d", disabled=(bo_cap_form==0), key="arr_bo_input",
                              help="Average number of tasks per hour")
             with cBO3:
-                avail_bo = st.number_input("Availability (min/day)", 0, 480, _init_ss("avail_bo", 400), 1, "%d", disabled=(bo_cap_form==0), key="avail_bo_input",
+                avail_bo = st.number_input("Availability (min/day)", 0, 480, _init_ss("avail_bo", 180), 1, "%d", disabled=(bo_cap_form==0), key="avail_bo_input",
                                help="Minutes per day available for work (max = hours open × 60)")
 
         st.markdown("### Simulation Settings")
@@ -1896,11 +1896,11 @@ if st.session_state.wizard_step == 1:
                 st.markdown("**Rework Loops**")
                 cFDL1, cFDL2, cFDL3 = st.columns(3)
                 with cFDL1:
-                    p_fd_insuff = st.slider("Percent with insufficient info", 0.0, 1.0, _init_ss("p_fd_insuff", 0.08), 0.01, disabled=(fd_cap_form==0), key="fd_p_insuff")
+                    p_fd_insuff = st.slider("Percent with insufficient info", 0.0, 1.0, _init_ss("p_fd_insuff", 0.25), 0.01, disabled=(fd_cap_form==0), key="fd_p_insuff")
                 with cFDL2:
-                    max_fd_loops = st.number_input("Maximum number of loops", 0, 10, _init_ss("max_fd_loops", 2), 1, "%d", disabled=(fd_cap_form==0), key="fd_max_loops")
+                    max_fd_loops = st.number_input("Maximum number of loops", 0, 10, _init_ss("max_fd_loops", 3), 1, "%d", disabled=(fd_cap_form==0), key="fd_max_loops")
                 with cFDL3:
-                    fd_loop_delay = st.slider("Delay to obtain", 0.0, 480.0, _init_ss("fd_loop_delay", 5.0), 0.5, disabled=(fd_cap_form==0), key="fd_delay")
+                    fd_loop_delay = st.slider("Delay to obtain", 0.0, 480.0, _init_ss("fd_loop_delay", 240.0), 0.5, disabled=(fd_cap_form==0), key="fd_delay")
             
                 st.markdown("**Disposition or routing Administrative staff**")
                 fd_route = route_row_ui("Administrative staff", {"Nurse": 0.50, "Doctors": 0.10, "Other staff": 0.10, DONE: 0.30}, 
@@ -1919,9 +1919,9 @@ if st.session_state.wizard_step == 1:
                 st.markdown("**Rework Loops**")
                 cNUL1, cNUL2 = st.columns(2)
                 with cNUL1:
-                    p_nurse_insuff = st.slider("Percent with insufficient info", 0.0, 1.0, _init_ss("p_nurse_insuff", 0.06), 0.01, disabled=(nu_cap_form==0), key="nu_p_insuff")
+                    p_nurse_insuff = st.slider("Percent with insufficient info", 0.0, 1.0, _init_ss("p_nurse_insuff", 0.20), 0.01, disabled=(nu_cap_form==0), key="nu_p_insuff")
                 with cNUL2:
-                    max_nurse_loops = st.number_input("Maximum number of loops", 0, 10, _init_ss("max_nurse_loops", 2), 1, "%d", disabled=(nu_cap_form==0), key="nu_max_loops")
+                    max_nurse_loops = st.number_input("Maximum number of loops", 0, 10, _init_ss("max_nurse_loops", 3), 1, "%d", disabled=(nu_cap_form==0), key="nu_max_loops")
             
                 st.markdown("**Disposition or routing Nurse**")
                 nu_route = route_row_ui("Nurse", {"Doctors": 0.40, "Other staff": 0.20, DONE: 0.40}, 
@@ -1935,11 +1935,11 @@ if st.session_state.wizard_step == 1:
                 st.markdown("**Rework Loops**")
                 cPRL1, cPRL2, cPRL3 = st.columns(3)
                 with cPRL1:
-                    p_provider_insuff = st.slider("Probability of rework needed", 0.0, 1.0, _init_ss("p_provider_insuff", 0.05), 0.01, disabled=(pr_cap_form==0), key="pr_p_insuff")
+                    p_provider_insuff = st.slider("Probability of rework needed", 0.0, 1.0, _init_ss("p_provider_insuff", 0.15), 0.01, disabled=(pr_cap_form==0), key="pr_p_insuff")
                 with cPRL2:
-                    max_provider_loops = st.number_input("Maximum number of loops", 0, 10, _init_ss("max_provider_loops", 2), 1, "%d", disabled=(pr_cap_form==0), key="pr_max_loops")
+                    max_provider_loops = st.number_input("Maximum number of loops", 0, 10, _init_ss("max_provider_loops", 3), 1, "%d", disabled=(pr_cap_form==0), key="pr_max_loops")
                 with cPRL3:
-                    provider_loop_delay = st.slider("Delay to obtain", 0.0, 480.0, _init_ss("provider_loop_delay", 5.0), 0.5, disabled=(pr_cap_form==0), key="pr_delay")
+                    provider_loop_delay = st.slider("Delay to obtain", 0.0, 480.0, _init_ss("provider_loop_delay", 300.0), 0.5, disabled=(pr_cap_form==0), key="pr_delay")
             
                 st.markdown("**Disposition or routing Doctors**")
                 pr_route = route_row_ui("Doctors", {"Other staff": 0.30, DONE: 0.70}, 
@@ -1953,11 +1953,11 @@ if st.session_state.wizard_step == 1:
                 st.markdown("**Rework Loops**")
                 cBOL1, cBOL2, cBOL3 = st.columns(3)
                 with cBOL1:
-                    p_backoffice_insuff = st.slider("Probability of rework needed", 0.0, 1.0, _init_ss("p_backoffice_insuff", 0.04), 0.01, disabled=(bo_cap_form==0), key="bo_p_insuff")
+                    p_backoffice_insuff = st.slider("Probability of rework needed", 0.0, 1.0, _init_ss("p_backoffice_insuff", 0.18), 0.01, disabled=(bo_cap_form==0), key="bo_p_insuff")
                 with cBOL2:
-                    max_backoffice_loops = st.number_input("Maximum number of loops", 0, 10, _init_ss("max_backoffice_loops", 2), 1, "%d", disabled=(bo_cap_form==0), key="bo_max_loops")
+                    max_backoffice_loops = st.number_input("Maximum number of loops", 0, 10, _init_ss("max_backoffice_loops", 3), 1, "%d", disabled=(bo_cap_form==0), key="bo_max_loops")
                 with cBOL3:
-                    backoffice_loop_delay = st.slider("Delay to obtain", 0.0, 480.0, _init_ss("backoffice_loop_delay", 5.0), 0.5, disabled=(bo_cap_form==0), key="bo_delay")
+                    backoffice_loop_delay = st.slider("Delay to obtain", 0.0, 480.0, _init_ss("backoffice_loop_delay", 180.0), 0.5, disabled=(bo_cap_form==0), key="bo_delay")
             
                 st.markdown("**Disposition or routing Other staff**")
                 bo_route = route_row_ui("Other staff", {"Administrative staff": 0.10, "Nurse": 0.10, "Doctors": 0.10, DONE: 0.70}, 
