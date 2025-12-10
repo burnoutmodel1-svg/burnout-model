@@ -499,7 +499,7 @@ def calculate_burnout(all_metrics: List[Metrics], p: Dict, active_roles: List[st
                 return 0.5 + 0.5 * (np.exp(2 * excess) - 1) / (np.exp(2) - 1)
         
         util_transformed = transform_utilization(avg_util)
-        rework_transformed = avg_rework ** 1.5
+        rework_transformed = min(1.0, avg_rework * 2.5)  # Linear scaling, amplified 2.5x
         volatility_transformed = np.sqrt(avg_queue_volatility)
         incompletion = 1.0 - avg_completion_rate
         incompletion_transformed = incompletion ** 0.7
