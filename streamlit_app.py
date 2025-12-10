@@ -84,7 +84,8 @@ class Metrics:
         self.task_completion_time: Dict[str, float] = {}
 
     def log(self, t, name, step, note="", arrival_t=None):
-        self.events.append((t, name, step, note, arrival_t if arrival_t is not None else self.task_arrival_time.get(name)))
+        # Disabled to save memory
+        pass
 
 # =============================
 # Step labels
