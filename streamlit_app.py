@@ -1704,13 +1704,6 @@ elif st.session_state.wizard_step == 2:
     
     st.markdown(f"## Results")
 
-    # Summary Table
-    st.markdown("### Summary")
-    summary_df = create_summary_table(all_metrics, p, burnout_data, active_roles)
-    st.dataframe(summary_df, use_container_width=True, hide_index=True)
-
-    st.markdown("---")
-
     # KPI Banner
     create_kpi_banner(all_metrics, p, burnout_data, active_roles)
 
@@ -1723,6 +1716,11 @@ elif st.session_state.wizard_step == 2:
         "Your custom weights determine how much each factor contributes to the overall burnout score.",
         title="How are the Key Performance Indicators calculated?"
     )
+
+    # Summary Table
+    st.markdown("### Summary")
+    summary_df = create_summary_table(all_metrics, p, burnout_data, active_roles)
+    st.dataframe(summary_df, use_container_width=True, hide_index=True)
     
     st.markdown("---")
     
