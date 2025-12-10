@@ -1310,26 +1310,36 @@ if st.session_state.wizard_step == 1:
         with st.expander("Advanced Settings – Processing times, loops & routing", expanded=False):
         
             st.markdown("### Contributors to Burnout-Relative Weights")
-            st.caption("Assign each item below a relative weight between 0 and 10 (0 = none, 10 = high)")
-            cB1, cB2, cB3 = st.columns(3)
-            with cB1:
-                ee_rank = st.selectbox("Emotional Exhaustion", [1, 2, 3], index=0, key="ee_rank",
-                                  help="Rank importance of Emotional Exhaustion")
-            with cB2:
-                dp_rank = st.selectbox("Depersonalization", [1, 2, 3], index=1, key="dp_rank",
-                                  help="Rank importance of Depersonalization")
-            with cB3:
-                ra_rank = st.selectbox("Reduced Accomplishment", [1, 2, 3], index=2, key="ra_rank",
-                                  help="Rank importance of Reduced Accomplishment")
+            st.caption("Assign each factor a weight between 0 and 10 (0 = no contribution, 10 = maximum contribution)")
 
-            ranks = [ee_rank, dp_rank, ra_rank]
-            if len(set(ranks)) != 3:
-                st.error("Each dimension must have a unique rank (1, 2, or 3)")
+            col1, col2 = st.columns(2)
+
+            with col1:
+                st.markdown("**Emotional Exhaustion Contributors:**")
+                w_utilization = st.slider("Utilization", 0, 10, _init_ss("w_utilization", 7), 1, 
+                              help="How much does high utilization contribute to burnout?")
+                w_availability_stress = st.slider("Availability Stress", 0, 10, _init_ss("w_availability_stress", 3), 1,
+                                     help="How much does limited availability contribute to burnout?")
+    
+                st.markdown("**Depersonalization Contributors:**")
+                w_rework = st.slider("Rework Percentage", 0, 10, _init_ss("w_rework", 6), 1,
+                        help="How much does rework contribute to burnout?")
+                w_task_switching = st.slider("Task Switching (Queue Volatility)", 0, 10, _init_ss("w_task_switching", 4), 1,
+                                help="How much does unpredictable workload contribute to burnout?")
+
+            with col2:
+                st.markdown("**Reduced Accomplishment Contributors:**")
+                w_incompletion = st.slider("Incomplete Tasks", 0, 10, _init_ss("w_incompletion", 5), 1,
+                               help="How much do incomplete tasks contribute to burnout?")
+                w_throughput_deficit = st.slider("Throughput Deficit", 0, 10, _init_ss("w_throughput_deficit", 5), 1,
+                                    help="How much does falling behind expected throughput contribute to burnout?")
+
+            # Calculate and display normalized weights
+            total_weight = w_utilization + w_availability_stress + w_rework + w_task_switching + w_incompletion + w_throughput_deficit
+            if total_weight > 0:
+                st.info(f"**Total weight: {total_weight}** — All scores will be normalized to 0-100 scale")
             else:
-                rank_to_weight = {1: 0.5, 2: 0.3, 3: 0.2}
-                st.success(f"Weights will be: EE={rank_to_weight[ee_rank]:.1f}, DP={rank_to_weight[dp_rank]:.1f}, RA={rank_to_weight[ra_rank]:.1f}")
-        
-            st.markdown("---")
+                st.warning("⚠️ All weights are 0 - burnout scores will be 0")
         
             with st.expander("Administrative staff", expanded=False):
                 st.markdown("**Processing time**")
