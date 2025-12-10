@@ -379,22 +379,35 @@ def run_single_replication(p: Dict, seed: int) -> Metrics:
 # =============================
 def calculate_burnout(all_metrics: List[Metrics], p: Dict, active_roles: List[str]) -> Dict:
     """
-    Refined burnout model with non-overlapping dimensions and non-linear effects:
-      - EE: Utilization (with threshold effects) + AvailabilityStress
-      - DP: ReworkPct + TaskSwitching (from queue volatility)
-      - RA: SameDayCompletion + TaskThroughput
-    Each subscale maps to 0–100, then Overall uses user-defined weights.
+    Burnout model with user-defined weights for each underlying factor:
+      - Utilization (with threshold effects)
+      - Availability Stress
+      - Rework Percentage
+      - Task Switching (queue volatility)
+      - Incompletion Rate
+      - Throughput Deficit
     """
-    rank_to_weight = {1: 0.5, 2: 0.3, 3: 0.2}
-    burnout_weights = p.get("burnout_weights", {"ee_rank": 1, "dp_rank": 2, "ra_rank": 3})
-    w_ee = rank_to_weight[burnout_weights["ee_rank"]]
-    w_dp = rank_to_weight[burnout_weights["dp_rank"]]
-    w_ra = rank_to_weight[burnout_weights["ra_rank"]]
+    weights = p.get("burnout_weights", {
+        "utilization": 7, "availability_stress": 3,
+        "rework": 6, "task_switching": 4,
+        "incompletion": 5, "throughput_deficit": 5
+    })
+    
+    # Normalize weights
+    total_weight = sum(weights.values())
+    if total_weight == 0:
+        # If all weights are 0, return zero burnout
+        return {
+            "by_role": {role: {"overall": 0.0, "components": {}} for role in active_roles},
+            "overall_clinic": 0.0
+        }
+    
+    norm_weights = {k: v / total_weight for k, v in weights.items()}
     
     burnout_scores = {}
-
     open_time_available = effective_open_minutes(p["sim_minutes"], p["open_minutes"])
     num_days = max(1, p["sim_minutes"] / DAY_MIN)
+    open_minutes_per_day = p["open_minutes"]
 
     for role in active_roles:
         capacity = {
@@ -406,6 +419,7 @@ def calculate_burnout(all_metrics: List[Metrics], p: Dict, active_roles: List[st
         if capacity == 0:
             continue
 
+        # Collect metrics across replications
         util_list = []
         rework_pct_list = []
         queue_volatility_list = []
@@ -415,8 +429,9 @@ def calculate_burnout(all_metrics: List[Metrics], p: Dict, active_roles: List[st
         for metrics in all_metrics:
             # Utilization (0–1)
             total_service = metrics.service_time_sum[role]
-            denom = capacity * open_time_available
-            util = total_service / max(1, denom)
+            avail_minutes_per_day = p.get("availability_per_day", {}).get(role, open_minutes_per_day)
+            total_available_capacity = capacity * num_days * avail_minutes_per_day
+            util = total_service / max(1, total_available_capacity)
             util_list.append(min(1.0, util))
 
             # ReworkPct (0–1)
@@ -471,9 +486,8 @@ def calculate_burnout(all_metrics: List[Metrics], p: Dict, active_roles: List[st
         avg_throughput = float(np.mean(throughput_rate_list)) if throughput_rate_list else 0.0
 
         # Availability stress (0–1)
-        open_minutes_per_day = p["open_minutes"]
-        avail_minutes = p.get("availability_per_day", {}).get(role, open_minutes_per_day)
-        avail_stress = (open_minutes_per_day - float(avail_minutes)) / open_minutes_per_day
+        avail_minutes_per_day = p.get("availability_per_day", {}).get(role, open_minutes_per_day)
+        avail_stress = (open_minutes_per_day - float(avail_minutes_per_day)) / open_minutes_per_day
         avail_stress = min(max(avail_stress, 0.0), 1.0)
 
         # Non-linear transformations
@@ -489,23 +503,28 @@ def calculate_burnout(all_metrics: List[Metrics], p: Dict, active_roles: List[st
         volatility_transformed = np.sqrt(avg_queue_volatility)
         incompletion = 1.0 - avg_completion_rate
         incompletion_transformed = incompletion ** 0.7
+        
         expected_throughput = p["arrivals_per_hour_by_role"].get(role, 1) * open_time_available / 60.0 / num_days
         throughput_ratio = avg_throughput / max(1e-6, expected_throughput)
         throughput_deficit = max(0.0, 1.0 - throughput_ratio)
         throughput_deficit = min(1.0, throughput_deficit)
 
-        # Burnout subscales
-        EE = 100.0 * (0.75 * util_transformed + 0.25 * avail_stress)
-        DP = 100.0 * (0.60 * rework_transformed + 0.40 * volatility_transformed)
-        RA = 100.0 * (0.55 * incompletion_transformed + 0.45 * throughput_deficit)
+        # Calculate component scores (0-100 each)
+        components = {
+            "utilization": 100.0 * util_transformed,
+            "availability_stress": 100.0 * avail_stress,
+            "rework": 100.0 * rework_transformed,
+            "task_switching": 100.0 * volatility_transformed,
+            "incompletion": 100.0 * incompletion_transformed,
+            "throughput_deficit": 100.0 * throughput_deficit
+        }
 
-        burnout_score = w_ee * EE + w_dp * DP + w_ra * RA
+        # Calculate weighted burnout score
+        burnout_score = sum(norm_weights[k] * components[k] for k in components.keys())
 
         burnout_scores[role] = {
             "overall": float(burnout_score),
-            "emotional_exhaustion": float(EE),
-            "depersonalization": float(DP),
-            "reduced_accomplishment": float(RA)
+            "components": {k: float(v) for k, v in components.items()}
         }
 
     clinic_burnout = np.mean([v["overall"] for v in burnout_scores.values()]) if burnout_scores else 0.0
@@ -1178,7 +1197,7 @@ def prob_input(label: str, key: str, default: float = 0.0, help: str | None = No
 # -------- STEP 1: DESIGN --------
 if st.session_state.wizard_step == 1:
     
-    with st.expander("ℹ️ About This Model", expanded=True):
+    with st.expander("ℹ️ About This Model", expanded=False):
         st.markdown("""
         This model simulates the workflow of CHC paperwork processes to help analyze system performance, work burden, and 
         associated burnout and to help evaluate potential process improvements and interventions.
@@ -1458,7 +1477,19 @@ if st.session_state.wizard_step == 1:
                           "Doctors": "exponential", "Other staff": "exponential"},
                 cv_speed=cv_speed,
                 emr_overhead={"Administrative staff": 0.5, "Nurse": 0.5, "NurseProtocol": 0.5, "Doctors": 0.5, "Other staff": 0.5},
-                burnout_weights={"ee_rank": ee_rank, "dp_rank": dp_rank, "ra_rank": ra_rank},
+                burnout_weights={
+                    # Emotional Exhaustion contributors
+                    "utilization": w_utilization,                    # Weight for workload intensity (0-10)
+                    "availability_stress": w_availability_stress,    # Weight for limited work time (0-10)
+            
+                    # Depersonalization contributors
+                    "rework": w_rework,                             # Weight for correction/loop time (0-10)
+                    "task_switching": w_task_switching,             # Weight for queue volatility (0-10)
+            
+                    # Reduced Accomplishment contributors
+                    "incompletion": w_incompletion,                 # Weight for incomplete tasks (0-10)
+                     "throughput_deficit": w_throughput_deficit      # Weight for falling behind (0-10)
+                },
                 p_fd_insuff=p_fd_insuff, max_fd_loops=max_fd_loops, fd_loop_delay=fd_loop_delay,
                 p_nurse_insuff=p_nurse_insuff, max_nurse_loops=max_nurse_loops,
                 p_provider_insuff=p_provider_insuff, max_provider_loops=max_provider_loops, provider_loop_delay=provider_loop_delay,
@@ -1533,12 +1564,17 @@ elif st.session_state.wizard_step == 2:
     create_kpi_banner(all_metrics, p, burnout_data, active_roles)
     
     help_icon(
-            "**Avg Turnaround:** Mean time from task arrival to completion across all tasks (includes overnight delays).\n\n"
-            "**Overall Burnout:** Clinic-wide burnout score (0-100) averaged across all roles.\n\n"
-            "**Emotional Exhaustion:** Measures workload intensity and time pressure (utilization + availability stress).\n\n"
-            "**Depersonalization:** Measures quality friction and unpredictability (rework + queue volatility).\n\n"
-            "**Reduced Accomplishment:** Measures task completion effectiveness (incompletion + throughput deficit).",
-            title="How are the Key Performance Indicators calculated?"
+        "**Avg Turnaround:** Mean time from task arrival to completion across all tasks (includes overnight delays).\n\n"
+        "**Overall Burnout:** Clinic-wide burnout score (0-100) averaged across all roles.\n\n"
+        "**Burnout Components:**\n"
+        "• **Utilization** - Workload intensity (non-linear: >75% accelerates stress)\n"
+        "• **Availability Stress** - Reduced available work time\n"
+        "• **Rework** - Time spent on corrections and loops\n"
+        "• **Task Switching** - Queue volatility and unpredictability\n"
+        "• **Incompletion** - Tasks not finished same-day\n"
+        "• **Throughput Deficit** - Falling behind expected workload\n\n"
+        "Your custom weights determine how much each factor contributes to the overall burnout score.",
+        title="How are the Key Performance Indicators calculated?"
     )
     
     st.markdown("---")
@@ -1595,14 +1631,16 @@ elif st.session_state.wizard_step == 2:
     
     col1, col2 = st.columns(2)
     with col1:
-        help_icon("**Burnout Calculation (Refined):**\n"
-            "• **Emotional Exhaustion (EE)** = 100 × (0.75×Utilization* + 0.25×AvailabilityStress)\n"
-            "  *Non-linear: <75% utilization grows slowly, >75% accelerates rapidly\n\n"
-            "• **Depersonalization (DP)** = 100 × (0.60×ReworkPct* + 0.40×QueueVolatility)\n"
-            "  *ReworkPct uses quadratic penalty; QueueVolatility = task switching stress\n\n"
-            "• **Reduced Accomplishment (RA)** = 100 × (0.55×Incompletion* + 0.45×ThroughputDeficit)\n"
-            "  *Measures actual task completion vs. expected workload\n\n"
-            "**Overall = Your custom weights × (EE, DP, RA)**\n\n"
+        help_icon("**Burnout Calculation:**\n"
+            "Burnout is calculated from 6 weighted components (your weights):\n\n"
+            "1. **Utilization** (non-linear): <75% grows slowly, >75% accelerates\n"
+            "2. **Availability Stress**: Limited work time per day\n"
+            "3. **Rework**: Time spent on corrections (quadratic penalty)\n"
+            "4. **Task Switching**: Queue volatility causing context switching\n"
+            "5. **Incompletion**: Tasks not completed same-day\n"
+            "6. **Throughput Deficit**: Actual vs. expected task completion\n\n"
+            "Each component is scaled 0-100, then weighted by your custom weights.\n"
+            "**Overall Score** = Σ(weight × component) / Σ(weights)\n\n"
             "**Interpretation:** 0–25 Low, 25–50 Moderate, 50–75 High, 75–100 Severe.",
             title="How is the Burnout Index calculated?")
     with col2:
