@@ -2231,19 +2231,32 @@ elif st.session_state.wizard_step == 2:
 
     st.markdown("---")
 
+    st.markdown("---")
+
     # Third row: Overtime Needed (kept from original)
     st.markdown("### Capacity Analysis")
-    fig_overtime = plot_overtime_needed(all_metrics, p, active_roles)
-    st.pyplot(fig_overtime, use_container_width=False)
-    plt.close(fig_overtime)
 
-    help_icon("**Calculation:** (Total work needed - Available capacity) ÷ (Days × Staff count)\n\n"
-         "Measures additional hours per person per day needed to finish all tasks.\n\n"
-         "**Interpretation:**\n"
-         "• 0 hours = Keeping up with workload\n"
-         "• 0.5 hours = 30min overtime daily\n"
-         "• 1+ hours = Serious capacity shortage\n"
-         "• 2+ hours = Critical understaffing",
-         title="How is Overtime Needed calculated?")
+    col1, col2 = st.columns(2)
+    with col1:
+        fig_overtime = plot_overtime_needed(all_metrics, p, active_roles)
+        st.pyplot(fig_overtime, use_container_width=False)
+        plt.close(fig_overtime)
+
+    with col2:
+        pass  # Empty column for balance
+
+    col1, col2 = st.columns(2)
+    with col1:
+        help_icon("**Calculation:** (Total work needed - Available capacity) ÷ (Days × Staff count)\n\n"
+             "Measures additional hours per person per day needed to finish all tasks.\n\n"
+             "**Interpretation:**\n"
+             "• 0 hours = Keeping up with workload\n"
+             "• 0.5 hours = 30min overtime daily\n"
+             "• 1+ hours = Serious capacity shortage\n"
+             "• 2+ hours = Critical understaffing",
+             title="How is Overtime Needed calculated?")
+
+    with col2:
+        pass  # Empty column for balance
 
     st.markdown("---")
