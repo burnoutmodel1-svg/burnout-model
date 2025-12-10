@@ -2087,171 +2087,180 @@ elif st.session_state.wizard_step == 2:
             })
     events_df = pd.DataFrame(all_events_data)
     
+    st.markdown(f"## Results")  # <-- THIS AND EVERYTHING BELOW MUST BE INDENTED INSIDE elif BLOCK
+
+    # Summary Table (always visible)
+    st.markdown("### Summary")
+    summary_df = create_summary_table(all_metrics, p, burnout_data, active_roles)
+    st.dataframe(summary_df, use_container_width=True, hide_index=True)
+
+    st.markdown("---")
+
     st.markdown(f"## Results")
 
-# Summary Table (always visible)
-st.markdown("### Summary")
-summary_df = create_summary_table(all_metrics, p, burnout_data, active_roles)
-st.dataframe(summary_df, use_container_width=True, hide_index=True)
+    # KPI Banner (first, always visible)
+    create_kpi_banner(all_metrics, p, burnout_data, active_roles)
 
-st.markdown("---")
+    help_icon(
+        "**Overall Burnout:** Clinic-wide burnout score (0-100) averaged across all roles.\n\n"
+        "**Component Scores (averaged across roles):**\n"
+        "• **Utilization Stress** - Workload intensity (non-linear: >75% accelerates)\n"
+        "• **Rework Stress** - Time spent on corrections and loops\n"
+        "• **Task Switching** - Queue volatility and unpredictability\n\n"
+        "Your custom weights determine how much each factor contributes to the overall burnout score.",
+        title="How are the Key Performance Indicators calculated?"
+    )
 
-# KPI Banner (always visible)
-create_kpi_banner(all_metrics, p, burnout_data, active_roles)
-
-help_icon(
-    "**Overall Burnout:** Clinic-wide burnout score (0-100) averaged across all roles.\n\n"
-    "**Component Scores (averaged across roles):**\n"
-    "• **Utilization Stress** - Workload intensity (non-linear: >75% accelerates)\n"
-    "• **Rework Stress** - Time spent on corrections and loops\n"
-    "• **Task Switching** - Queue volatility and unpredictability\n\n"
-    "Your custom weights determine how much each factor contributes to the overall burnout score.",
-    title="How are the Key Performance Indicators calculated?"
-)
-
-st.markdown("---")
-
-# System Performance - Collapsible
-with st.expander("## System Performance", expanded=False):
-    st.caption("How well is the clinic handling incoming work?")
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        fig_throughput = plot_daily_throughput(all_metrics, p, active_roles)
-        st.pyplot(fig_throughput, use_container_width=False)
-        plt.close(fig_throughput)
-    
-    with col2:
-        fig_queue = plot_queue_over_time(all_metrics, p, active_roles)
-        st.pyplot(fig_queue, use_container_width=False)
-        plt.close(fig_queue)
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        help_icon("**Calculation:** Counts tasks completed each day across replications (mean ± SD). "
-             "**Interpretation:** Declining = falling behind; stable/increasing = keeping up. "
-             "Shaded area shows ±1 standard deviation across replications.",
-             title="How is Daily Throughput calculated?")
-    with col2:
-        help_icon("**Calculation:** Tracks tasks waiting in each queue every minute (mean ± SD). "
-             "**Interpretation:** Persistent high queues = bottlenecks.",
-             title="How is Queue Backlog Trend graph calculated?")
-
-# Response Times (Patient Care) - Collapsible
-with st.expander("## Response Times (Patient Care)", expanded=False):
-    st.caption("How quickly are tasks being completed?")
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        fig_response_dist = plot_response_time_distribution(all_metrics, p)
-        st.pyplot(fig_response_dist, use_container_width=False)
-        plt.close(fig_response_dist)
-    
-    with col2:
-        fig_completion_days = plot_completion_by_day(all_metrics, p)
-        st.pyplot(fig_completion_days, use_container_width=False)
-        plt.close(fig_completion_days)
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        help_icon("**Calculation:** Groups all completed tasks into 3-hour bins (0-3hrs, 3-6hrs, etc.) up to 48 hours. "
-             "Shows mean count ± SD across replications.\n\n"
-             "**Interpretation:** Peak near 0 hours = fast response times. Long tail = delays. "
-             "Shaded area shows variability across simulation runs.",
-             title="How is Response Time Distribution calculated?")
-    with col2:
-        help_icon("**Calculation:** Counts tasks by completion time relative to arrival day:\n"
-             "• Same Day = completed same operational day\n"
-             "• +1 Day = completed 1 operational day later\n"
-             "• +2/+3 Days = 2-3 days later\n"
-             "• +4+ Days = 4 or more days later\n\n"
-             "**Interpretation:** More green (same day) = better patient care. "
-             "Red bars (+3/+4 days) indicate significant delays.",
-             title="How is Task Completion Timeline calculated?")
-
-# Workload - Collapsible
-with st.expander("## Workload", expanded=False):
-    st.caption("How is workload distributed and evolving over time?")
-    
-    # First row: Daily Workload and Burnout Over Days
-    col1, col2 = st.columns(2)
-    with col1:
-        fig_daily_workload = plot_daily_workload(all_metrics, p, active_roles)
-        st.pyplot(fig_daily_workload, use_container_width=False)
-        plt.close(fig_daily_workload)
-    
-    with col2:
-        fig_burnout_days = plot_burnout_over_days(all_metrics, p, active_roles)
-        st.pyplot(fig_burnout_days, use_container_width=False)
-        plt.close(fig_burnout_days)
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        help_icon("**Calculation:** Counts task arrivals to each role per day (mean ± SD). "
-             "Threshold lines show approximate workload levels that correspond to 75% and 90% utilization.\n\n"
-             "**Interpretation:** Lines approaching/exceeding thresholds indicate high workload. "
-             "Consistent high workload leads to burnout.",
-             title="How is Daily Workload calculated?")
-    with col2:
-        help_icon("**Calculation:** Calculates daily burnout score using that day's metrics: "
-             "utilization, availability stress, rework, task switching, incompletion, and throughput deficit. "
-             "Weighted by your custom burnout weights.\n\n"
-             "**Interpretation:** Scores above 50 (orange line) = moderate burnout. "
-             "Scores above 75 (red line) = high burnout risk.",
-             title="How is Burnout Progression calculated?")
-    
     st.markdown("---")
-    
-    # Second row: Rerouting and Missing Info
-    col1, col2 = st.columns(2)
-    with col1:
-        fig_rerouting = plot_rerouting_by_day(all_metrics, p, active_roles)
-        st.pyplot(fig_rerouting, use_container_width=False)
-        plt.close(fig_rerouting)
-    
-    with col2:
-        fig_missing_info = plot_missing_info_by_day(all_metrics, p, active_roles)
-        st.pyplot(fig_missing_info, use_container_width=False)
-        plt.close(fig_missing_info)
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        help_icon("**Calculation:** Counts tasks that arrived at a role that did not originally receive them "
-             "(inappropriate initial routing). Tracked per day.\n\n"
-             "**Interpretation:** High rerouting indicates poor initial task assignment, "
-             "causing inefficiency and delays.",
-             title="How is Rerouting (Inappropriate Receipt) calculated?")
-    with col2:
-        help_icon("**Calculation:** Counts 'INSUFF' events (insufficient information) per role per day. "
-             "These trigger rework loops where staff must follow up for missing information.\n\n"
-             "**Interpretation:** High missing info rates indicate communication gaps, "
-             "incomplete documentation, or unclear processes.",
-             title="How is Missing Info (Call Backs) calculated?")
-    
+
+    # Summary Table (second, always visible)
+    st.markdown("### Summary")
+    summary_df = create_summary_table(all_metrics, p, burnout_data, active_roles)
+    st.dataframe(summary_df, use_container_width=True, hide_index=True)
+
     st.markdown("---")
-    
-    # Third row: Overtime Needed
-    st.markdown("### Capacity Analysis")
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        fig_overtime = plot_overtime_needed(all_metrics, p, active_roles)
-        st.pyplot(fig_overtime, use_container_width=False)
-        plt.close(fig_overtime)
-    
-    with col2:
-        pass  # Empty column for balance
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        help_icon("**Calculation:** (Total work needed - Available capacity) ÷ (Days × Staff count)\n\n"
-             "Measures additional hours per person per day needed to finish all tasks.\n\n"
-             "**Interpretation:**\n"
-             "• 0 hours = Keeping up with workload\n"
-             "• 0.5 hours = 30min overtime daily\n"
-             "• 1+ hours = Serious capacity shortage\n"
-             "• 2+ hours = Critical understaffing",
-             title="How is Overtime Needed calculated?")
-    
-    with col2:
-        pass  # Empty column for balance
+
+    # System Performance - Collapsible
+    with st.expander("## System Performance", expanded=False):
+        st.caption("How well is the clinic handling incoming work?")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            fig_throughput = plot_daily_throughput(all_metrics, p, active_roles)
+            st.pyplot(fig_throughput, use_container_width=False)
+            plt.close(fig_throughput)
+        
+        with col2:
+            fig_queue = plot_queue_over_time(all_metrics, p, active_roles)
+            st.pyplot(fig_queue, use_container_width=False)
+            plt.close(fig_queue)
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            help_icon("**Calculation:** Counts tasks completed each day across replications (mean ± SD). "
+                 "**Interpretation:** Declining = falling behind; stable/increasing = keeping up. "
+                 "Shaded area shows ±1 standard deviation across replications.",
+                 title="How is Daily Throughput calculated?")
+        with col2:
+            help_icon("**Calculation:** Tracks tasks waiting in each queue every minute (mean ± SD). "
+                 "**Interpretation:** Persistent high queues = bottlenecks.",
+                 title="How is Queue Backlog Trend graph calculated?")
+
+    # Response Times (Patient Care) - Collapsible
+    with st.expander("## Response Times (Patient Care)", expanded=False):
+        st.caption("How quickly are tasks being completed?")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            fig_response_dist = plot_response_time_distribution(all_metrics, p)
+            st.pyplot(fig_response_dist, use_container_width=False)
+            plt.close(fig_response_dist)
+        
+        with col2:
+            fig_completion_days = plot_completion_by_day(all_metrics, p)
+            st.pyplot(fig_completion_days, use_container_width=False)
+            plt.close(fig_completion_days)
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            help_icon("**Calculation:** Groups all completed tasks into 3-hour bins (0-3hrs, 3-6hrs, etc.) up to 48 hours. "
+                 "Shows mean count ± SD across replications.\n\n"
+                 "**Interpretation:** Peak near 0 hours = fast response times. Long tail = delays. "
+                 "Shaded area shows variability across simulation runs.",
+                 title="How is Response Time Distribution calculated?")
+        with col2:
+            help_icon("**Calculation:** Counts tasks by completion time relative to arrival day:\n"
+                 "• Same Day = completed same operational day\n"
+                 "• +1 Day = completed 1 operational day later\n"
+                 "• +2/+3 Days = 2-3 days later\n"
+                 "• +4+ Days = 4 or more days later\n\n"
+                 "**Interpretation:** More green (same day) = better patient care. "
+                 "Red bars (+3/+4 days) indicate significant delays.",
+                 title="How is Task Completion Timeline calculated?")
+
+    # Workload - Collapsible
+    with st.expander("## Workload", expanded=False):
+        st.caption("How is workload distributed and evolving over time?")
+        
+        # First row: Daily Workload and Burnout Over Days
+        col1, col2 = st.columns(2)
+        with col1:
+            fig_daily_workload = plot_daily_workload(all_metrics, p, active_roles)
+            st.pyplot(fig_daily_workload, use_container_width=False)
+            plt.close(fig_daily_workload)
+        
+        with col2:
+            fig_burnout_days = plot_burnout_over_days(all_metrics, p, active_roles)
+            st.pyplot(fig_burnout_days, use_container_width=False)
+            plt.close(fig_burnout_days)
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            help_icon("**Calculation:** Counts task arrivals to each role per day (mean ± SD). "
+                 "Threshold lines show approximate workload levels that correspond to 75% and 90% utilization.\n\n"
+                 "**Interpretation:** Lines approaching/exceeding thresholds indicate high workload. "
+                 "Consistent high workload leads to burnout.",
+                 title="How is Daily Workload calculated?")
+        with col2:
+            help_icon("**Calculation:** Calculates daily burnout score using that day's metrics: "
+                 "utilization, availability stress, rework, task switching, incompletion, and throughput deficit. "
+                 "Weighted by your custom burnout weights.\n\n"
+                 "**Interpretation:** Scores above 50 (orange line) = moderate burnout. "
+                 "Scores above 75 (red line) = high burnout risk.",
+                 title="How is Burnout Progression calculated?")
+        
+        st.markdown("---")
+        
+        # Second row: Rerouting and Missing Info
+        col1, col2 = st.columns(2)
+        with col1:
+            fig_rerouting = plot_rerouting_by_day(all_metrics, p, active_roles)
+            st.pyplot(fig_rerouting, use_container_width=False)
+            plt.close(fig_rerouting)
+        
+        with col2:
+            fig_missing_info = plot_missing_info_by_day(all_metrics, p, active_roles)
+            st.pyplot(fig_missing_info, use_container_width=False)
+            plt.close(fig_missing_info)
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            help_icon("**Calculation:** Counts tasks that arrived at a role that did not originally receive them "
+                 "(inappropriate initial routing). Tracked per day.\n\n"
+                 "**Interpretation:** High rerouting indicates poor initial task assignment, "
+                 "causing inefficiency and delays.",
+                 title="How is Rerouting (Inappropriate Receipt) calculated?")
+        with col2:
+            help_icon("**Calculation:** Counts 'INSUFF' events (insufficient information) per role per day. "
+                 "These trigger rework loops where staff must follow up for missing information.\n\n"
+                 "**Interpretation:** High missing info rates indicate communication gaps, "
+                 "incomplete documentation, or unclear processes.",
+                 title="How is Missing Info (Call Backs) calculated?")
+        
+        st.markdown("---")
+        
+        # Third row: Overtime Needed
+        st.markdown("### Capacity Analysis")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            fig_overtime = plot_overtime_needed(all_metrics, p, active_roles)
+            st.pyplot(fig_overtime, use_container_width=False)
+            plt.close(fig_overtime)
+        
+        with col2:
+            pass  # Empty column for balance
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            help_icon("**Calculation:** (Total work needed - Available capacity) ÷ (Days × Staff count)\n\n"
+                 "Measures additional hours per person per day needed to finish all tasks.\n\n"
+                 "**Interpretation:**\n"
+                 "• 0 hours = Keeping up with workload\n"
+                 "• 0.5 hours = 30min overtime daily\n"
+                 "• 1+ hours = Serious capacity shortage\n"
+                 "• 2+ hours = Critical understaffing",
+                 title="How is Overtime Needed calculated?")
+        
+        with col2:
+            pass  # Empty column for balance
