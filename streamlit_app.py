@@ -1257,7 +1257,6 @@ if st.session_state.wizard_step == 1:
         st.caption("Configure staffing, arrivals, and availability for each role")
     
         with st.expander("Administrative staff", expanded=False):
-        with st.expander("Administrative staff", expanded=False):
             cFD1, cFD2, cFD3 = st.columns(3)
             with cFD1:
                 fd_cap_form = st.number_input("Number working per day", 0, 50, _init_ss("fd_cap", 3), 1, "%d", key="fd_cap_input",
