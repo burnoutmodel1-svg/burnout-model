@@ -2089,40 +2089,43 @@ elif st.session_state.wizard_step == 2:
     
     st.markdown(f"## Results")
 
-    # KPI Banner
-    create_kpi_banner(all_metrics, p, burnout_data, active_roles)
+# Summary Table (always visible)
+st.markdown("### Summary")
+summary_df = create_summary_table(all_metrics, p, burnout_data, active_roles)
+st.dataframe(summary_df, use_container_width=True, hide_index=True)
 
-    help_icon(
-        "**Overall Burnout:** Clinic-wide burnout score (0-100) averaged across all roles.\n\n"
-        "**Component Scores (averaged across roles):**\n"
-        "• **Utilization Stress** - Workload intensity (non-linear: >75% accelerates)\n"
-        "• **Rework Stress** - Time spent on corrections and loops\n"
-        "• **Task Switching** - Queue volatility and unpredictability\n\n"
-        "Your custom weights determine how much each factor contributes to the overall burnout score.",
-        title="How are the Key Performance Indicators calculated?"
-    )
+st.markdown("---")
 
-    # Summary Table
-    st.markdown("### Summary")
-    summary_df = create_summary_table(all_metrics, p, burnout_data, active_roles)
-    st.dataframe(summary_df, use_container_width=True, hide_index=True)
-    
-    st.markdown("---")
-    
-    st.markdown("## System Performance")
+# KPI Banner (always visible)
+create_kpi_banner(all_metrics, p, burnout_data, active_roles)
+
+help_icon(
+    "**Overall Burnout:** Clinic-wide burnout score (0-100) averaged across all roles.\n\n"
+    "**Component Scores (averaged across roles):**\n"
+    "• **Utilization Stress** - Workload intensity (non-linear: >75% accelerates)\n"
+    "• **Rework Stress** - Time spent on corrections and loops\n"
+    "• **Task Switching** - Queue volatility and unpredictability\n\n"
+    "Your custom weights determine how much each factor contributes to the overall burnout score.",
+    title="How are the Key Performance Indicators calculated?"
+)
+
+st.markdown("---")
+
+# System Performance - Collapsible
+with st.expander("## System Performance", expanded=False):
     st.caption("How well is the clinic handling incoming work?")
-
+    
     col1, col2 = st.columns(2)
     with col1:
         fig_throughput = plot_daily_throughput(all_metrics, p, active_roles)
         st.pyplot(fig_throughput, use_container_width=False)
         plt.close(fig_throughput)
-
+    
     with col2:
         fig_queue = plot_queue_over_time(all_metrics, p, active_roles)
         st.pyplot(fig_queue, use_container_width=False)
         plt.close(fig_queue)
-
+    
     col1, col2 = st.columns(2)
     with col1:
         help_icon("**Calculation:** Counts tasks completed each day across replications (mean ± SD). "
@@ -2133,23 +2136,22 @@ elif st.session_state.wizard_step == 2:
         help_icon("**Calculation:** Tracks tasks waiting in each queue every minute (mean ± SD). "
              "**Interpretation:** Persistent high queues = bottlenecks.",
              title="How is Queue Backlog Trend graph calculated?")
-    
-    st.markdown("---")
 
-    st.markdown("## Response Times (Patient Care)")
+# Response Times (Patient Care) - Collapsible
+with st.expander("## Response Times (Patient Care)", expanded=False):
     st.caption("How quickly are tasks being completed?")
-
+    
     col1, col2 = st.columns(2)
     with col1:
         fig_response_dist = plot_response_time_distribution(all_metrics, p)
         st.pyplot(fig_response_dist, use_container_width=False)
         plt.close(fig_response_dist)
-
+    
     with col2:
         fig_completion_days = plot_completion_by_day(all_metrics, p)
         st.pyplot(fig_completion_days, use_container_width=False)
         plt.close(fig_completion_days)
-
+    
     col1, col2 = st.columns(2)
     with col1:
         help_icon("**Calculation:** Groups all completed tasks into 3-hour bins (0-3hrs, 3-6hrs, etc.) up to 48 hours. "
@@ -2166,26 +2168,23 @@ elif st.session_state.wizard_step == 2:
              "**Interpretation:** More green (same day) = better patient care. "
              "Red bars (+3/+4 days) indicate significant delays.",
              title="How is Task Completion Timeline calculated?")
-    
-    st.markdown("---")
 
-    st.markdown("---")
-
-    st.markdown("## Workload")
+# Workload - Collapsible
+with st.expander("## Workload", expanded=False):
     st.caption("How is workload distributed and evolving over time?")
-
+    
     # First row: Daily Workload and Burnout Over Days
     col1, col2 = st.columns(2)
     with col1:
         fig_daily_workload = plot_daily_workload(all_metrics, p, active_roles)
         st.pyplot(fig_daily_workload, use_container_width=False)
         plt.close(fig_daily_workload)
-
+    
     with col2:
         fig_burnout_days = plot_burnout_over_days(all_metrics, p, active_roles)
         st.pyplot(fig_burnout_days, use_container_width=False)
         plt.close(fig_burnout_days)
-
+    
     col1, col2 = st.columns(2)
     with col1:
         help_icon("**Calculation:** Counts task arrivals to each role per day (mean ± SD). "
@@ -2200,21 +2199,21 @@ elif st.session_state.wizard_step == 2:
              "**Interpretation:** Scores above 50 (orange line) = moderate burnout. "
              "Scores above 75 (red line) = high burnout risk.",
              title="How is Burnout Progression calculated?")
-
+    
     st.markdown("---")
-
+    
     # Second row: Rerouting and Missing Info
     col1, col2 = st.columns(2)
     with col1:
         fig_rerouting = plot_rerouting_by_day(all_metrics, p, active_roles)
         st.pyplot(fig_rerouting, use_container_width=False)
         plt.close(fig_rerouting)
-
+    
     with col2:
         fig_missing_info = plot_missing_info_by_day(all_metrics, p, active_roles)
         st.pyplot(fig_missing_info, use_container_width=False)
         plt.close(fig_missing_info)
-
+    
     col1, col2 = st.columns(2)
     with col1:
         help_icon("**Calculation:** Counts tasks that arrived at a role that did not originally receive them "
@@ -2228,23 +2227,21 @@ elif st.session_state.wizard_step == 2:
              "**Interpretation:** High missing info rates indicate communication gaps, "
              "incomplete documentation, or unclear processes.",
              title="How is Missing Info (Call Backs) calculated?")
-
+    
     st.markdown("---")
-
-    st.markdown("---")
-
-    # Third row: Overtime Needed (kept from original)
+    
+    # Third row: Overtime Needed
     st.markdown("### Capacity Analysis")
-
+    
     col1, col2 = st.columns(2)
     with col1:
         fig_overtime = plot_overtime_needed(all_metrics, p, active_roles)
         st.pyplot(fig_overtime, use_container_width=False)
         plt.close(fig_overtime)
-
+    
     with col2:
         pass  # Empty column for balance
-
+    
     col1, col2 = st.columns(2)
     with col1:
         help_icon("**Calculation:** (Total work needed - Available capacity) ÷ (Days × Staff count)\n\n"
@@ -2255,8 +2252,6 @@ elif st.session_state.wizard_step == 2:
              "• 1+ hours = Serious capacity shortage\n"
              "• 2+ hours = Critical understaffing",
              title="How is Overtime Needed calculated?")
-
+    
     with col2:
         pass  # Empty column for balance
-
-    st.markdown("---")
