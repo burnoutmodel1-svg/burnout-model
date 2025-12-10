@@ -2087,15 +2087,6 @@ elif st.session_state.wizard_step == 2:
             })
     events_df = pd.DataFrame(all_events_data)
     
-    st.markdown(f"## Results")  # <-- THIS AND EVERYTHING BELOW MUST BE INDENTED INSIDE elif BLOCK
-
-    # Summary Table (always visible)
-    st.markdown("### Summary")
-    summary_df = create_summary_table(all_metrics, p, burnout_data, active_roles)
-    st.dataframe(summary_df, use_container_width=True, hide_index=True)
-
-    st.markdown("---")
-
     st.markdown(f"## Results")
 
     # KPI Banner (first, always visible)
