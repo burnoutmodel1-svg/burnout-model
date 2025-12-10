@@ -665,67 +665,55 @@ def plot_queue_over_time(all_metrics: List[Metrics], p: Dict, active_roles: List
     return fig
     
 def plot_daily_throughput(all_metrics: List[Metrics], p: Dict, active_roles: List[str]):
+    """
+    Line graph showing total daily throughput (tasks completed) over time with SD shading.
+    """
+    fig, ax = plt.subplots(figsize=(8, 4), dpi=100)
+    
     num_days = max(1, int(p["sim_minutes"] // DAY_MIN))
     open_minutes = p["open_minutes"]
     
-    daily_data = []
+    daily_completed_lists = [[] for _ in range(num_days)]
     
-    for d in range(num_days):
-        start_t = d * DAY_MIN
-        end_t = start_t + open_minutes
-        
-        day_totals = []
-        tasks_over_1day = []
-        tasks_over_2days = []
-        
-        for metrics in all_metrics:
-            # Tasks completed this day
+    for metrics in all_metrics:
+        for d in range(num_days):
+            start_t = d * DAY_MIN
+            end_t = start_t + open_minutes
+            
+            # Count tasks completed during this operational day
             completed = sum(1 for ct in metrics.task_completion_time.values() if start_t <= ct < end_t)
-            day_totals.append(completed)
-            
-            # Tasks still in system at end of this operational day (not completed yet)
-            in_system = [
-                task_id for task_id, arrival_time in metrics.task_arrival_time.items()
-                if arrival_time < end_t and (task_id not in metrics.task_completion_time or metrics.task_completion_time[task_id] >= end_t)
-            ]
-            
-            # Count how many are >1 working day old and >2 working days old
-            over_1day = 0
-            over_2days = 0
-            
-            for task_id in in_system:
-                arrival_time = metrics.task_arrival_time[task_id]
-                arrival_day = int(arrival_time // DAY_MIN)
-                current_day = d
-                days_in_system = current_day - arrival_day
-                
-                if days_in_system >= 1:
-                    over_1day += 1
-                if days_in_system >= 2:
-                    over_2days += 1
-            
-            tasks_over_1day.append(over_1day)
-            tasks_over_2days.append(over_2days)
-        
-        mean_total = np.mean(day_totals)
-        std_total = np.std(day_totals, ddof=1) if len(day_totals) > 1 else 0.0
-        
-        mean_over_1 = np.mean(tasks_over_1day)
-        std_over_1 = np.std(tasks_over_1day, ddof=1) if len(tasks_over_1day) > 1 else 0.0
-        
-        mean_over_2 = np.mean(tasks_over_2days)
-        std_over_2 = np.std(tasks_over_2days, ddof=1) if len(tasks_over_2days) > 1 else 0.0
-        
-        daily_data.append({
-            'Day': f'Day {d+1}',
-            'Tasks Completed': f'{mean_total:.1f} ± {std_total:.1f}',
-            'Tasks >1 Day Old': f'{mean_over_1:.1f} ± {std_over_1:.1f}',
-            'Tasks >2 Days Old': f'{mean_over_2:.1f} ± {std_over_2:.1f}'
-        })
+            daily_completed_lists[d].append(completed)
     
-    df = pd.DataFrame(daily_data)
+    # Calculate mean and std for each day
+    daily_means = [np.mean(daily_completed_lists[d]) for d in range(num_days)]
+    daily_stds = [np.std(daily_completed_lists[d]) for d in range(num_days)]
     
-    return df
+    x = np.arange(1, num_days + 1)
+    
+    # Plot line with markers
+    ax.plot(x, daily_means, color='#2ca02c', linewidth=2.5, marker='o', 
+            markersize=7, label='Mean Daily Throughput', alpha=0.9)
+    
+    # Add confidence band (±1 SD)
+    upper_bound = [daily_means[i] + daily_stds[i] for i in range(num_days)]
+    lower_bound = [max(0, daily_means[i] - daily_stds[i]) for i in range(num_days)]
+    ax.fill_between(x, lower_bound, upper_bound, color='#2ca02c', alpha=0.15)
+    
+    ax.set_xlabel('Operational Day', fontsize=11, fontweight='bold')
+    ax.set_ylabel('Tasks Completed', fontsize=11, fontweight='bold')
+    ax.set_title('Daily Throughput Over Time', fontsize=12, fontweight='bold')
+    
+    if num_days > 0:
+        x_ticks = np.arange(1, num_days + 1)
+        ax.set_xticks(x_ticks)
+        ax.set_xticklabels([str(i) for i in x_ticks])
+    
+    ax.legend(loc='best', fontsize=9, framealpha=0.9)
+    ax.grid(True, alpha=0.3, linestyle=':')
+    ax.set_ylim(bottom=0)
+    
+    plt.tight_layout()
+    return fig
 
 def plot_rework_impact(all_metrics: List[Metrics], p: Dict, active_roles: List[str]):
     fig, ax = plt.subplots(figsize=(6, 3), dpi=80)
@@ -1726,21 +1714,23 @@ elif st.session_state.wizard_step == 2:
     
     st.markdown("## System Performance")
     st.caption("How well is the clinic handling incoming work?")
-    
+
     col1, col2 = st.columns(2)
     with col1:
-        throughput_df = plot_daily_throughput(all_metrics, p, active_roles)
-        st.dataframe(throughput_df, use_container_width=True, hide_index=True)
-    
+        fig_throughput = plot_daily_throughput(all_metrics, p, active_roles)
+        st.pyplot(fig_throughput, use_container_width=False)
+        plt.close(fig_throughput)
+
     with col2:
         fig_queue = plot_queue_over_time(all_metrics, p, active_roles)
         st.pyplot(fig_queue, use_container_width=False)
         plt.close(fig_queue)
-    
+
     col1, col2 = st.columns(2)
     with col1:
-        help_icon("**Calculation:** Counts tasks completed each day across replications. "
-             "**Interpretation:** Declining = falling behind; stable/increasing = keeping up.",
+        help_icon("**Calculation:** Counts tasks completed each day across replications (mean ± SD). "
+             "**Interpretation:** Declining = falling behind; stable/increasing = keeping up. "
+             "Shaded area shows ±1 standard deviation across replications.",
              title="How is Daily Throughput calculated?")
     with col2:
         help_icon("**Calculation:** Tracks tasks waiting in each queue every minute (mean ± SD). "
