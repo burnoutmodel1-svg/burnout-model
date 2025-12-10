@@ -2093,13 +2093,28 @@ elif st.session_state.wizard_step == 2:
     create_kpi_banner(all_metrics, p, burnout_data, active_roles)
 
     help_icon(
-        "**Overall Burnout:** Clinic-wide burnout score (0-100) averaged across all roles.\n\n"
-        "**Component Scores (averaged across roles):**\n"
-        "• **Utilization Stress** - Workload intensity (non-linear: >75% accelerates)\n"
-        "• **Rework Stress** - Time spent on corrections and loops\n"
-        "• **Task Switching** - Queue volatility and unpredictability\n\n"
-        "Your custom weights determine how much each factor contributes to the overall burnout score.",
-        title="How are the Key Performance Indicators calculated?"
+        "**Overall Burnout (0-100):**\n"
+        "Clinic-wide burnout score averaged across all roles. Scale: 0-25 Low, 25-50 Moderate, 50-75 High, 75-100 Severe.\n\n"
+    
+        "**Component Scores (0-100 each, averaged across roles):**\n\n"
+    
+        "• **Utilization Stress (0-100)** - Measures workload intensity based on how much available time is consumed. "
+        "Uses non-linear scaling where utilization >75% creates exponentially higher stress (a staff member at 80% utilization "
+        "experiences much more than 5% more stress than at 75%).\n\n"
+    
+        "• **Rework Stress (0-100)** - Quantifies time wasted on corrections, loops, and re-processing tasks. "
+        "Calculated from the percentage of work time spent redoing work due to missing information or errors. "
+        "Uses quadratic penalty (rework² × 100) so doubling rework quadruples the stress.\n\n"
+    
+        "• **Task Switching (0-100)** - Measures unpredictability and context switching caused by volatile queue lengths. "
+        "Calculated from queue volatility (standard deviation ÷ mean). High scores indicate constantly changing priorities "
+        "and frequent interruptions.\n\n"
+    
+        "**How your custom weights affect these scores:**\n"
+        "You assigned weights (0-10) to six underlying factors: utilization, availability stress, rework, task switching, "
+        "incompletion, and throughput deficit. The component scores shown here are pre-weighted averages. The Overall Burnout "
+        "score combines all six weighted factors, normalized to 0-100.",
+        title="How are the burnout metrics calculated?"
     )
 
     st.markdown("---")
