@@ -1,0 +1,10 @@
+streamlit
+simpy
+numpy
+matplotlib
+pandas
+altair
+graphviz
+plotly
+xlsxwriter
+spicy
