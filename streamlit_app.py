@@ -792,16 +792,18 @@ def plot_burnout_scores(burnout_data: Dict, active_roles: List[str]):
     role_scores = [burnout_data["by_role"][r]["overall"] for r in active_roles]
     role_scores.append(burnout_data["overall_clinic"])
     
+    # Calculate standard deviation across components for error bars
     stds = []
     for role in active_roles:
-        subscales = [
-            burnout_data["by_role"][role]["emotional_exhaustion"],
-            burnout_data["by_role"][role]["depersonalization"],
-            burnout_data["by_role"][role]["reduced_accomplishment"]
-        ]
-        stds.append(np.std(subscales))
+        components = burnout_data["by_role"][role].get("components", {})
+        component_values = list(components.values())
+        if component_values:
+            stds.append(np.std(component_values))
+        else:
+            stds.append(0.0)
     
-    stds.append(np.std(role_scores[:-1]))
+    # For overall clinic, use std of role scores
+    stds.append(np.std(role_scores[:-1]) if len(role_scores) > 1 else 0.0)
     
     colors = []
     for score in role_scores:
