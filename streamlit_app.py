@@ -174,7 +174,8 @@ class CHCSystem:
             "Doctors": self.provider, "Other staff": self.backoffice
         }
         
-        avail_params = params.get("availability_per_day", {"Administrative staff": 480, "Nurse": 480, "Doctors": 480, "Other staff": 480})        self.availability = {
+        avail_params = params.get("availability_per_day", {"Administrative staff": 480, "Nurse": 480, "Doctors": 480, "Other staff": 480})        
+        self.availability = {
             role: generate_availability_schedule(params["sim_minutes"], role, avail_params.get(role, 60), seed_offset)
             for role in ROLES
         }
