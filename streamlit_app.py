@@ -368,6 +368,15 @@ def arrival_process_for_role(env, s: CHCSystem, role_name: str, rate_per_hour: i
         task_id = f"{role_name[:2].upper()}-{i:05d}"
         env.process(task_lifecycle(env, task_id, s, initial_role=role_name))
 
+def monitor(env, s: CHCSystem):
+    while True:
+        s.m.time_stamps.append(env.now)
+        for r in ROLES:
+            res = s.role_to_res[r]
+            self_q = len(res.queue) if res is not None else 0
+            s.m.queues[r].append(self_q)
+        yield env.timeout(1)
+
 # =============================
 # Run single replication
 # =============================
@@ -383,7 +392,7 @@ def run_single_replication(p: Dict, seed: int) -> Metrics:
         rate = int(p["arrivals_per_hour_by_role"].get(role, 0))
         env.process(arrival_process_for_role(env, system, role, rate))
 
-    env.process(monitor(env, system))
+    env.process(monitor(env, system))  # ← Line 386
     env.run(until=p["sim_minutes"])
     
     return metrics
