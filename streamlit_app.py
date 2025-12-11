@@ -1529,34 +1529,7 @@ def create_summary_table(all_metrics: List[Metrics], p: Dict, burnout_data: Dict
     """
     num_reps = len(all_metrics)
     
-    # Calculate metrics
-    turnaround_times_list = []
-    for metrics in all_metrics:
-        comp_times = metrics.task_completion_time
-        arr_times = metrics.task_arrival_time
-        done_ids = set(comp_times.keys())
-        
-        if len(done_ids) > 0:
-            tt = [comp_times[k] - arr_times.get(k, comp_times[k]) for k in done_ids]
-            avg_tt = np.mean(tt)
-            turnaround_times_list.append(avg_tt)
-    
-    mean_turnaround = np.mean(turnaround_times_list) if turnaround_times_list else 0.0
-    std_turnaround = np.std(turnaround_times_list, ddof=1) if len(turnaround_times_list) > 1 else 0.0
-    
-    # Reroutes by role
-    reroutes_by_role = {r: [] for r in active_roles}
-    for metrics in all_metrics:
-        loop_counts = {
-            "Administrative staff": metrics.loop_fd_insufficient,
-            "Nurse": metrics.loop_nurse_insufficient,
-            "Doctors": metrics.loop_provider_insufficient,
-            "Other staff": metrics.loop_backoffice_insufficient
-        }
-        for role in active_roles:
-            reroutes_by_role[role].append(loop_counts[role])
-    
-    # Missing info by role
+    # Missing info by role (INSUFF events - rework loops)
     missing_info_by_role = {r: [] for r in active_roles}
     for metrics in all_metrics:
         role_missing = {r: 0 for r in active_roles}
@@ -1573,6 +1546,41 @@ def create_summary_table(all_metrics: List[Metrics], p: Dict, burnout_data: Dict
         
         for role in active_roles:
             missing_info_by_role[role].append(role_missing[role])
+    
+    # Re-routes by role (tasks that arrived at wrong role and got forwarded)
+    reroutes_by_role = {r: [] for r in active_roles}
+    for metrics in all_metrics:
+        role_reroutes = {r: 0 for r in active_roles}
+        
+        for t, name, step, note, arr in metrics.events:
+            # A reroute is when a task queues at a role that didn't originally receive it
+            if step in ["FD_QUEUE", "NU_QUEUE", "PR_QUEUE", "BO_QUEUE"]:
+                step_to_role = {
+                    "FD_QUEUE": "Administrative staff",
+                    "NU_QUEUE": "Nurse",
+                    "PR_QUEUE": "Doctors",
+                    "BO_QUEUE": "Other staff"
+                }
+                current_role = step_to_role[step]
+                
+                # Determine initial role from task ID prefix
+                initial_role = None
+                if name.startswith("AD"):
+                    initial_role = "Administrative staff"
+                elif name.startswith("NU"):
+                    initial_role = "Nurse"
+                elif name.startswith("DO"):
+                    initial_role = "Doctors"
+                elif name.startswith("OT"):
+                    initial_role = "Other staff"
+                
+                # Count as reroute if current role != initial role
+                # AND it's not a recheck queue (those are rework, not reroutes)
+                if current_role != initial_role and "RECHECK" not in step:
+                    role_reroutes[current_role] += 1
+        
+        for role in active_roles:
+            reroutes_by_role[role].append(role_reroutes[role])
     
     # Utilization by role
     num_days = p["sim_minutes"] / DAY_MIN
@@ -1604,7 +1612,7 @@ def create_summary_table(all_metrics: List[Metrics], p: Dict, burnout_data: Dict
     
     # Add columns for each role
     for role in active_roles:
-        col_name = role.replace("Administrative staff", "Staff").replace("Doctors", "Doctors")
+        col_name = role.replace("Administrative staff", "Staff").replace("Doctors", "MDs")
         
         reroutes_mean = np.mean(reroutes_by_role[role])
         reroutes_std = np.std(reroutes_by_role[role], ddof=1) if len(reroutes_by_role[role]) > 1 else 0.0
