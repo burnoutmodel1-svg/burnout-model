@@ -1025,12 +1025,10 @@ def plot_burnout_over_days(all_metrics: List[Metrics], p: Dict, active_roles: Li
                                     if day_start <= t < day_end]
                 
                 if len(day_queue_samples) > 1:
-                    q_mean = np.mean(day_queue_samples)
                     q_std = np.std(day_queue_samples)
-                    if q_mean > 0:
-                        daily_volatility = min(1.0, q_std / q_mean)
-                    else:
-                        daily_volatility = 0.0
+                    # Normalize by capacity instead of mean to avoid division issues
+                    # High std relative to capacity = high volatility
+                    daily_volatility = min(1.0, q_std / max(1, capacity * 3))
                 else:
                     daily_volatility = 0.0
                 
