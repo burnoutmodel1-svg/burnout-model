@@ -3921,7 +3921,7 @@ elif st.session_state.wizard_step == 2:
             file_name=f"CHC_Simulation_Results_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             use_container_width=True
-
+        )
     # System Performance - Collapsible
     with st.expander("  System Performance", expanded=False):
         st.caption("How well is the clinic handling incoming work?")
