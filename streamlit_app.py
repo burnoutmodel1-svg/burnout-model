@@ -195,16 +195,25 @@ class CHCSystem:
         while remaining > 1e-9:
             current_min = int(self.env.now)
             
+            # If clinic is closed, wait until it opens
             if not is_open(self.env.now, open_minutes):
                 yield self.env.timeout(minutes_until_open(self.env.now, open_minutes))
                 continue
             
+            # If staff member is not available at this minute, wait
             if len(available_set) > 0 and current_min not in available_set:
                 yield self.env.timeout(1)
                 continue
             
+            # Calculate how much time until closing
             window = minutes_until_close(self.env.now, open_minutes)
             
+            # If we're at or past closing, stop and wait for next day
+            if window <= 0:
+                yield self.env.timeout(minutes_until_open(self.env.now, open_minutes))
+                continue
+            
+            # Calculate available work window considering staff availability
             if len(available_set) > 0:
                 avail_window = 1
                 check_min = current_min + 1
@@ -215,14 +224,21 @@ class CHCSystem:
             else:
                 work_chunk = min(remaining, window)
             
+            # Acquire resource and do work - but ONLY during open hours
             with resource.request() as req:
                 t_req = self.env.now
                 yield req
                 self.m.waits[role_account].append(self.env.now - t_req)
                 self.m.taps[role_account] += 1
-                yield self.env.timeout(work_chunk)
-                self.m.service_time_sum[role_account] += work_chunk
-            remaining -= work_chunk
+                
+                # Double-check we don't work past closing
+                time_left_today = minutes_until_close(self.env.now, open_minutes)
+                actual_work = min(work_chunk, time_left_today)
+                
+                if actual_work > 0:
+                    yield self.env.timeout(actual_work)
+                    self.m.service_time_sum[role_account] += actual_work
+                    remaining -= actual_work
 
 # =============================
 # Routing helpers
