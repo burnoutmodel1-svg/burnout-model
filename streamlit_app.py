@@ -1,4 +1,4 @@
-from typing import Dict, List
+wafrom typing import Dict, List
 import streamlit as st
 import simpy
 import random
@@ -702,42 +702,54 @@ def plot_queue_over_time(all_metrics: List[Metrics], p: Dict, active_roles: List
     
 def plot_daily_throughput(all_metrics: List[Metrics], p: Dict, active_roles: List[str]):
     """
-    Line graph showing total daily throughput (tasks completed) over time with SD shading.
+    Line graph showing daily throughput (tasks completed) by role over time with SD shading.
     """
     fig, ax = plt.subplots(figsize=(8, 4), dpi=100)
+    colors = {'Administrative staff': '#1f77b4', 'Nurse': '#ff7f0e', 'Doctors': '#2ca02c', 'Other staff': '#d62728'}
     
     num_days = max(1, int(p["sim_minutes"] // DAY_MIN))
     open_minutes = p["open_minutes"]
     
-    daily_completed_lists = [[] for _ in range(num_days)]
-    
-    for metrics in all_metrics:
-        for d in range(num_days):
-            start_t = d * DAY_MIN
-            end_t = start_t + open_minutes
-            
-            # Count tasks completed during this operational day
-            completed = sum(1 for ct in metrics.task_completion_time.values() if start_t <= ct < end_t)
-            daily_completed_lists[d].append(completed)
-    
-    # Calculate mean and std for each day
-    daily_means = [np.mean(daily_completed_lists[d]) for d in range(num_days)]
-    daily_stds = [np.std(daily_completed_lists[d]) for d in range(num_days)]
-    
-    x = np.arange(1, num_days + 1)
-    
-    # Plot line with markers
-    ax.plot(x, daily_means, color='#2ca02c', linewidth=2.5, marker='o', 
-            markersize=7, label='Mean Daily Throughput', alpha=0.9)
-    
-    # Add confidence band (±1 SD)
-    upper_bound = [daily_means[i] + daily_stds[i] for i in range(num_days)]
-    lower_bound = [max(0, daily_means[i] - daily_stds[i]) for i in range(num_days)]
-    ax.fill_between(x, lower_bound, upper_bound, color='#2ca02c', alpha=0.15)
+    for role in active_roles:
+        daily_completed_lists = [[] for _ in range(num_days)]
+        
+        # Role prefix mapping
+        role_prefix_map = {
+            "Administrative staff": "AD",
+            "Nurse": "NU",
+            "Doctors": "DO",
+            "Other staff": "OT"
+        }
+        prefix = role_prefix_map.get(role, "")
+        
+        for metrics in all_metrics:
+            for d in range(num_days):
+                start_t = d * DAY_MIN
+                end_t = start_t + open_minutes
+                
+                # Count tasks for THIS ROLE completed during this operational day
+                completed = sum(1 for task_id, ct in metrics.task_completion_time.items() 
+                               if start_t <= ct < end_t and task_id.startswith(prefix))
+                daily_completed_lists[d].append(completed)
+        
+        # Calculate mean and std for each day
+        daily_means = [np.mean(daily_completed_lists[d]) for d in range(num_days)]
+        daily_stds = [np.std(daily_completed_lists[d]) for d in range(num_days)]
+        
+        x = np.arange(1, num_days + 1)
+        
+        # Plot line with markers for this role
+        ax.plot(x, daily_means, color=colors.get(role, '#333333'), linewidth=2.5, marker='o', 
+                markersize=6, label=role, alpha=0.9)
+        
+        # Add confidence band (±1 SD)
+        upper_bound = [daily_means[i] + daily_stds[i] for i in range(num_days)]
+        lower_bound = [max(0, daily_means[i] - daily_stds[i]) for i in range(num_days)]
+        ax.fill_between(x, lower_bound, upper_bound, color=colors.get(role, '#333333'), alpha=0.1)
     
     ax.set_xlabel('Operational Day', fontsize=11, fontweight='bold')
     ax.set_ylabel('Tasks Completed', fontsize=11, fontweight='bold')
-    ax.set_title('Daily Throughput Over Time', fontsize=12, fontweight='bold')
+    ax.set_title('Daily Throughput by Role', fontsize=12, fontweight='bold')
     
     if num_days > 0:
         x_ticks = np.arange(1, num_days + 1)
@@ -750,7 +762,7 @@ def plot_daily_throughput(all_metrics: List[Metrics], p: Dict, active_roles: Lis
     
     plt.tight_layout()
     return fig
-
+    
 def plot_response_time_distribution(all_metrics: List[Metrics], p: Dict):
     """
     Line graph showing distribution of task completion times in 3-hour bins up to 48 hours.
@@ -1130,8 +1142,18 @@ def plot_burnout_over_days(all_metrics: List[Metrics], p: Dict, active_roles: Li
                     daily_incompletion = 0.0
                 
                 # 5. THROUGHPUT DEFICIT - completed today vs expected today
-                tasks_completed_today = sum(1 for ct in metrics.task_completion_time.values() 
-                                           if day_start <= ct < day_end)
+                # Map role to task prefix
+                role_prefix_map = {
+                    "Administrative staff": "AD",
+                    "Nurse": "NU",
+                    "Doctors": "DO",
+                    "Other staff": "OT"
+                }
+                prefix = role_prefix_map.get(role, "")
+                
+                # Count completions for THIS ROLE today
+                tasks_completed_today = sum(1 for task_id, ct in metrics.task_completion_time.items()
+                                           if day_start <= ct < day_end and task_id.startswith(prefix))
                 expected_daily = p["arrivals_per_hour_by_role"].get(role, 1) * open_minutes_per_day / 60.0
                 
                 if expected_daily > 0:
