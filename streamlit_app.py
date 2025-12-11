@@ -1679,6 +1679,102 @@ def _excel_engine():
         except Exception:
             return None
 
+def create_excel_download(all_metrics: List[Metrics], p: Dict, burnout_data: Dict, 
+                         active_roles: List[str], agg_results: Dict) -> BytesIO:
+    """
+    Create an Excel file with all simulation results across multiple sheets.
+    """
+    output = BytesIO()
+    
+    engine = _excel_engine()
+    if engine is None:
+        st.error("No Excel engine available. Install xlsxwriter or openpyxl.")
+        return None
+    
+    with pd.ExcelWriter(output, engine=engine) as writer:
+        # Summary sheet
+        summary_df = create_summary_table(all_metrics, p, burnout_data, active_roles)
+        summary_df.to_excel(writer, sheet_name='Summary', index=False)
+        
+        # Flow time metrics
+        agg_results["flow_df"].to_excel(writer, sheet_name='Flow Times', index=False)
+        
+        # Time at role
+        agg_results["time_at_role_df"].to_excel(writer, sheet_name='Time at Role', index=False)
+        
+        # Queue metrics
+        agg_results["queue_df"].to_excel(writer, sheet_name='Queues', index=False)
+        
+        # Utilization
+        agg_results["util_df"].to_excel(writer, sheet_name='Utilization', index=False)
+        
+        # Rework metrics
+        agg_results["rework_overview_df"].to_excel(writer, sheet_name='Rework Overview', index=False)
+        agg_results["loop_origin_df"].to_excel(writer, sheet_name='Loop Origins', index=False)
+        
+        # Daily throughput
+        agg_results["throughput_full_df"].to_excel(writer, sheet_name='Daily Throughput', index=False)
+        
+        # Burnout scores
+        burnout_rows = []
+        for role in active_roles:
+            if role in burnout_data["by_role"]:
+                components = burnout_data["by_role"][role].get("components", {})
+                burnout_rows.append({
+                    "Role": role,
+                    "Overall Burnout": burnout_data["by_role"][role]["overall"],
+                    "Utilization": components.get("utilization", 0.0),
+                    "Availability Stress": components.get("availability_stress", 0.0),
+                    "Rework": components.get("rework", 0.0),
+                    "Task Switching": components.get("task_switching", 0.0),
+                    "Incompletion": components.get("incompletion", 0.0),
+                    "Throughput Deficit": components.get("throughput_deficit", 0.0)
+                })
+        burnout_rows.append({
+            "Role": "Clinic Average",
+            "Overall Burnout": burnout_data["overall_clinic"],
+            "Utilization": None,
+            "Availability Stress": None,
+            "Rework": None,
+            "Task Switching": None,
+            "Incompletion": None,
+            "Throughput Deficit": None
+        })
+        burnout_df = pd.DataFrame(burnout_rows)
+        burnout_df.to_excel(writer, sheet_name='Burnout Scores', index=False)
+        
+        # Configuration parameters
+        config_data = []
+        config_data.append({"Parameter": "Simulation Days", "Value": p["sim_minutes"] / DAY_MIN})
+        config_data.append({"Parameter": "Hours Open per Day", "Value": p["open_minutes"] / 60})
+        config_data.append({"Parameter": "Number of Replications", "Value": p["num_replications"]})
+        config_data.append({"Parameter": "", "Value": ""})
+        
+        config_data.append({"Parameter": "Administrative Staff Count", "Value": p["frontdesk_cap"]})
+        config_data.append({"Parameter": "Administrative Staff Arrivals/hr", "Value": p["arrivals_per_hour_by_role"]["Administrative staff"]})
+        config_data.append({"Parameter": "Administrative Staff Availability (min/day)", "Value": p["availability_per_day"]["Administrative staff"]})
+        config_data.append({"Parameter": "", "Value": ""})
+        
+        config_data.append({"Parameter": "Nurse Count", "Value": p["nurse_cap"]})
+        config_data.append({"Parameter": "Nurse Arrivals/hr", "Value": p["arrivals_per_hour_by_role"]["Nurse"]})
+        config_data.append({"Parameter": "Nurse Availability (min/day)", "Value": p["availability_per_day"]["Nurse"]})
+        config_data.append({"Parameter": "", "Value": ""})
+        
+        config_data.append({"Parameter": "Doctor Count", "Value": p["provider_cap"]})
+        config_data.append({"Parameter": "Doctor Arrivals/hr", "Value": p["arrivals_per_hour_by_role"]["Doctors"]})
+        config_data.append({"Parameter": "Doctor Availability (min/day)", "Value": p["availability_per_day"]["Doctors"]})
+        config_data.append({"Parameter": "", "Value": ""})
+        
+        config_data.append({"Parameter": "Other Staff Count", "Value": p["backoffice_cap"]})
+        config_data.append({"Parameter": "Other Staff Arrivals/hr", "Value": p["arrivals_per_hour_by_role"]["Other staff"]})
+        config_data.append({"Parameter": "Other Staff Availability (min/day)", "Value": p["availability_per_day"]["Other staff"]})
+        
+        config_df = pd.DataFrame(config_data)
+        config_df.to_excel(writer, sheet_name='Configuration', index=False)
+    
+    output.seek(0)
+    return output
+
 # =============================
 # Streamlit UI
 # =============================
@@ -2270,3 +2366,28 @@ elif st.session_state.wizard_step == 2:
         
         with col2:
             pass  # Empty column for balance
+
+
+st.markdown("---")
+
+    # Summary Table (second, always visible)
+    st.markdown("### Summary")
+    summary_df = create_summary_table(all_metrics, p, burnout_data, active_roles)
+    st.dataframe(summary_df, use_container_width=True, hide_index=True)
+
+    # ADD THIS SECTION HERE:
+    st.markdown("---")
+    st.markdown("### Export Results")
+    
+    excel_file = create_excel_download(all_metrics, p, burnout_data, active_roles, agg_results)
+    
+    if excel_file:
+        st.download_button(
+            label="📥 Download Results as Excel",
+            data=excel_file,
+            file_name=f"CHC_Simulation_Results_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True
+        )
+    
+    st.markdown("---")
