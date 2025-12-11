@@ -618,9 +618,6 @@ def plot_utilization_by_role(all_metrics: List[Metrics], p: Dict, active_roles: 
     bars = ax.bar(x, means, color=colors, alpha=0.8, width=0.6)
     ax.errorbar(x, means, yerr=stds, fmt='none', ecolor='black', capsize=5, alpha=0.6)
     
-    ax.axhline(y=75, color='orange', linestyle='--', alpha=0.4, linewidth=1.5, label='75% threshold')
-    ax.axhline(y=90, color='red', linestyle='--', alpha=0.4, linewidth=1.5, label='90% critical')
-    
     ax.set_xlabel('Role', fontsize=10)
     ax.set_ylabel('Utilization (%)', fontsize=10)
     ax.set_title('Staff Utilization by Role', fontsize=11, fontweight='bold')
@@ -926,8 +923,6 @@ def plot_daily_workload(all_metrics: List[Metrics], p: Dict, active_roles: List[
     
     # Add threshold lines (these are approximate based on average service times)
     y_max = ax.get_ylim()[1]
-    ax.axhline(y=y_max * 0.75, color='orange', linestyle='--', alpha=0.4, linewidth=1.5, label='75% load threshold')
-    ax.axhline(y=y_max * 0.90, color='red', linestyle='--', alpha=0.4, linewidth=1.5, label='90% load threshold')
     
     ax.set_xlabel('Operational Day', fontsize=11, fontweight='bold')
     ax.set_ylabel('Tasks Arriving', fontsize=11, fontweight='bold')
@@ -1090,9 +1085,6 @@ def plot_burnout_over_days(all_metrics: List[Metrics], p: Dict, active_roles: Li
         ax.fill_between(x, lower, upper, color=colors.get(role, '#333333'), alpha=0.1)
     
     # Add burnout threshold lines
-    ax.axhline(y=50, color='orange', linestyle='--', alpha=0.4, linewidth=1.5, label='Moderate burnout (50)')
-    ax.axhline(y=75, color='red', linestyle='--', alpha=0.4, linewidth=1.5, label='High burnout (75)')
-    
     ax.set_xlabel('Operational Day', fontsize=11, fontweight='bold')
     ax.set_ylabel('Burnout Score (0-100)', fontsize=11, fontweight='bold')
     ax.set_title('Burnout Progression by Role', fontsize=12, fontweight='bold')
@@ -1306,9 +1298,6 @@ def plot_overtime_needed(all_metrics: List[Metrics], p: Dict, active_roles: List
     bars = ax.bar(x, means, color=colors, alpha=0.8, width=0.6)
     
     ax.errorbar(x, means, yerr=stds, fmt='none', ecolor='black', capsize=5, alpha=0.6)
-    
-    ax.axhline(y=0.5, color='orange', linestyle='--', alpha=0.4, linewidth=1.5, label='0.5 hr/day')
-    ax.axhline(y=1.0, color='red', linestyle='--', alpha=0.4, linewidth=1.5, label='1.0 hr/day')
     
     ax.set_xlabel('Role', fontsize=10)
     ax.set_ylabel('Additional Hours per Day per Person', fontsize=10)
