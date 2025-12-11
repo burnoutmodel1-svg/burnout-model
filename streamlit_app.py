@@ -2130,7 +2130,7 @@ if st.session_state.wizard_step == 1:
         
 # -------- STEP 2: RUN & RESULTS --------
 elif st.session_state.wizard_step == 2:
-    st.markdown("## Simulation Run")
+    st.markdown("  Simulation Run")
     st.button("← Back to Design", on_click=go_back)
 
     if not st.session_state["design"]:
@@ -2183,7 +2183,7 @@ elif st.session_state.wizard_step == 2:
             })
     events_df = pd.DataFrame(all_events_data)
     
-    st.markdown(f"## Results")
+    st.markdown(f"  Results")
 
     # KPI Banner (first, always visible)
     create_kpi_banner(all_metrics, p, burnout_data, active_roles)
@@ -2242,7 +2242,7 @@ elif st.session_state.wizard_step == 2:
             use_container_width=True
 
     # System Performance - Collapsible
-    with st.expander("## System Performance", expanded=False):
+    with st.expander("  System Performance", expanded=False):
         st.caption("How well is the clinic handling incoming work?")
         
         col1, col2 = st.columns(2)
@@ -2268,7 +2268,7 @@ elif st.session_state.wizard_step == 2:
                  title="How is Queue Backlog Trend graph calculated?")
 
     # Response Times (Patient Care) - Collapsible
-    with st.expander("## Response Times (Patient Care)", expanded=False):
+    with st.expander("  Response Times (Patient Care)", expanded=False):
         st.caption("How quickly are tasks being completed?")
         
         col1, col2 = st.columns(2)
@@ -2300,7 +2300,7 @@ elif st.session_state.wizard_step == 2:
                  title="How is Task Completion Timeline calculated?")
 
     # Workload - Collapsible
-    with st.expander("## Workload", expanded=False):
+    with st.expander("  Workload", expanded=False):
         st.caption("How is workload distributed and evolving over time?")
         
         # First row: Daily Workload and Burnout Over Days
