@@ -2303,18 +2303,19 @@ elif st.session_state.wizard_step == 2:
         
         with col2:
             pass  # Empty column for balance
-
-st.markdown("---")
-st.markdown("### Export Results")
     
-excel_file = create_excel_download(all_metrics, p)
+    # Excel download - MUST be at Step 2 level (no indentation)
+    st.markdown("---")
+    st.markdown("### Export Results")
     
-if excel_file:
-     st.download_button(
-        label="📥 Download Event Log as Excel",
-        data=excel_file,
-        file_name=f"CHC_Event_Log_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        use_container_width=True
-    )
+    excel_file = create_excel_download(all_metrics, p)
+    
+    if excel_file:
+        st.download_button(
+            label="📥 Download Event Log as Excel",
+            data=excel_file,
+            file_name=f"CHC_Event_Log_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True
+        )
     
