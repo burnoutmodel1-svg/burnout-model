@@ -1351,6 +1351,12 @@ def plot_overtime_needed(all_metrics: List[Metrics], p: Dict, active_roles: List
     plt.tight_layout()
     return fig
 
+def help_icon(help_text: str, title: str = None):
+    if title is None:
+        title = "How is this calculated?"
+    with st.expander(title):
+        st.caption(help_text)
+
 def aggregate_replications(p: Dict, all_metrics: List[Metrics], active_roles: List[str]):
     num_reps = len(all_metrics)
     
