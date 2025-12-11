@@ -572,81 +572,100 @@ def calculate_burnout(all_metrics: List[Metrics], p: Dict, active_roles: List[st
 # =============================
 # Visualization functions
 # =============================
-def plot_utilization_by_role(all_metrics: List[Metrics], p: Dict, active_roles: List[str]):
+def plot_daily_utilization(all_metrics: List[Metrics], p: Dict, active_roles: List[str]):
     """
-    Bar chart showing utilization by role (mean ± SD across replications).
+    Line graph showing daily utilization (% of available time spent working) by role.
+    This directly corresponds to the utilization burnout component.
     """
-    fig, ax = plt.subplots(figsize=(6, 3), dpi=80)
+    fig, ax = plt.subplots(figsize=(8, 4), dpi=100)
+    colors = {'Administrative staff': '#1f77b4', 'Nurse': '#ff7f0e', 'Doctors': '#2ca02c', 'Other staff': '#d62728'}
     
-    open_time_available = effective_open_minutes(p["sim_minutes"], p["open_minutes"])
+    num_days = max(1, int(p["sim_minutes"] // DAY_MIN))
+    open_minutes_per_day = p["open_minutes"]
     
-    util_lists = {r: [] for r in active_roles}
+    for role in active_roles:
+        daily_util_per_rep = [[] for _ in range(num_days)]
+        
+        capacity = {
+            "Administrative staff": p["frontdesk_cap"],
+            "Nurse": p["nurse_cap"],
+            "Doctors": p["provider_cap"],
+            "Other staff": p["backoffice_cap"]
+        }[role]
+        
+        if capacity == 0:
+            continue
+        
+        avail_minutes_per_day = p.get("availability_per_day", {}).get(role, open_minutes_per_day)
+        
+        role_queue_step = {
+            "Administrative staff": "FD_QUEUE",
+            "Nurse": "NU_QUEUE",
+            "Doctors": "PR_QUEUE",
+            "Other staff": "BO_QUEUE"
+        }
+        queue_step = role_queue_step.get(role)
+        
+        avg_service_time = {
+            "Administrative staff": p.get("svc_frontdesk", 10),
+            "Nurse": p.get("svc_nurse", 15),
+            "Doctors": p.get("svc_provider", 20),
+            "Other staff": p.get("svc_backoffice", 12)
+        }.get(role, 10)
+        
+        for metrics in all_metrics:
+            for d in range(num_days):
+                day_start = d * DAY_MIN
+                day_end = day_start + open_minutes_per_day
+                
+                # Count tasks served by this role today
+                tasks_served_today = sum(1 for t, name, step, note, arr in metrics.events
+                                        if step == queue_step and day_start <= t < day_end)
+                
+                # Estimate work time
+                available_capacity_minutes = capacity * avail_minutes_per_day
+                estimated_work_time = tasks_served_today * avg_service_time
+                daily_util = min(1.0, estimated_work_time / max(1, available_capacity_minutes)) * 100
+                
+                daily_util_per_rep[d].append(daily_util)
+        
+        # Calculate mean and std
+        means = [np.mean(daily_util_per_rep[d]) if daily_util_per_rep[d] else 0 
+                for d in range(num_days)]
+        stds = [np.std(daily_util_per_rep[d]) if len(daily_util_per_rep[d]) > 1 else 0 
+               for d in range(num_days)]
+        
+        x = np.arange(1, num_days + 1)
+        
+        # Plot line
+        ax.plot(x, means, color=colors.get(role, '#333333'), 
+               linewidth=2.5, marker='o', markersize=6, label=role, alpha=0.9)
+        
+        # Add confidence band
+        upper = [means[i] + stds[i] for i in range(num_days)]
+        lower = [max(0, means[i] - stds[i]) for i in range(num_days)]
+        ax.fill_between(x, lower, upper, color=colors.get(role, '#333333'), alpha=0.1)
     
-    for metrics in all_metrics:
-        for role in active_roles:
-            capacity = {
-                "Administrative staff": p["frontdesk_cap"],
-                "Nurse": p["nurse_cap"],
-                "Doctors": p["provider_cap"],
-                "Other staff": p["backoffice_cap"]
-            }[role]
-            
-            if capacity > 0:
-                total_service = metrics.service_time_sum[role]
-                open_minutes_per_day = p["open_minutes"]
-                avail_minutes_per_day = p.get("availability_per_day", {}).get(role, open_minutes_per_day)
-                num_days = p["sim_minutes"] / DAY_MIN
-                available_capacity = capacity * num_days * avail_minutes_per_day
-                util = min(1.0, total_service / max(1, available_capacity))
-                util_lists[role].append(util)
+    # Add threshold lines
+    ax.axhline(y=75, color='orange', linestyle='--', linewidth=1.5, alpha=0.5, label='75% threshold')
+    ax.axhline(y=90, color='red', linestyle='--', linewidth=1.5, alpha=0.5, label='90% threshold')
     
-    means = [np.mean(util_lists[r]) * 100 for r in active_roles]
-    stds = [np.std(util_lists[r]) * 100 for r in active_roles]
+    ax.set_xlabel('Operational Day', fontsize=11, fontweight='bold')
+    ax.set_ylabel('Utilization (%)', fontsize=11, fontweight='bold')
+    ax.set_title('Daily Staff Utilization by Role', fontsize=12, fontweight='bold')
     
-    colors = []
-    for mean_util in means:
-        if mean_util < 50:
-            colors.append('#2ecc71')
-        elif mean_util < 75:
-            colors.append('#f39c12')
-        elif mean_util < 90:
-            colors.append('#e67e22')
-        else:
-            colors.append('#e74c3c')
+    if num_days > 0:
+        x_ticks = np.arange(1, num_days + 1)
+        ax.set_xticks(x_ticks)
+        ax.set_xticklabels([str(i) for i in x_ticks])
     
-    x = np.arange(len(active_roles))
-    bars = ax.bar(x, means, color=colors, alpha=0.8, width=0.6)
-    ax.errorbar(x, means, yerr=stds, fmt='none', ecolor='black', capsize=5, alpha=0.6)
-    
-    ax.set_xlabel('Role', fontsize=10)
-    ax.set_ylabel('Utilization (%)', fontsize=10)
-    ax.set_title('Staff Utilization by Role', fontsize=11, fontweight='bold')
-    ax.set_xticks(x)
-    ax.set_xticklabels(active_roles, fontsize=9, rotation=15, ha='right')
+    ax.legend(loc='best', fontsize=8, framealpha=0.9)
+    ax.grid(True, alpha=0.3, linestyle=':')
     ax.set_ylim(0, 105)
-    ax.legend(loc='upper right', fontsize=8)
-    ax.grid(True, alpha=0.3, axis='y')
-    
-    for i, (bar, mean, std) in enumerate(zip(bars, means, stds)):
-        height = bar.get_height()
-        # Calculate label position - place inside bar if utilization is high, above if low
-        if height > 85:
-            # Place inside the bar for high utilization
-            label_y = height - 10
-            label_color = 'white'
-        else:
-            # Place above the bar for lower utilization
-            label_y = height + std + 3
-            label_color = 'black'
-    
-        ax.text(bar.get_x() + bar.get_width()/2., label_y,
-                f'{mean:.0f}%\n±{std:.0f}%',
-                ha='center', va='top' if height > 85 else 'bottom', 
-                fontsize=8, fontweight='bold', color=label_color)
     
     plt.tight_layout()
     return fig
-
+    
 def plot_queue_over_time(all_metrics: List[Metrics], p: Dict, active_roles: List[str]):
     fig, ax = plt.subplots(figsize=(8, 4), dpi=100)
     colors = {'Administrative staff': '#1f77b4', 'Nurse': '#ff7f0e', 'Doctors': '#2ca02c', 'Other staff': '#d62728'}
@@ -1084,17 +1103,31 @@ def plot_burnout_over_days(all_metrics: List[Metrics], p: Dict, active_roles: Li
                 day_start = d * DAY_MIN
                 day_end = day_start + open_minutes_per_day
                 
-                # 1. UTILIZATION - based on end-of-day queue
-                end_of_open_time = day_start + open_minutes_per_day
+                # 1. UTILIZATION - based on actual work time vs available time
+                # Count tasks that were SERVED by this role today (queued today)
+                role_queue_step = {
+                    "Administrative staff": "FD_QUEUE",
+                    "Nurse": "NU_QUEUE",
+                    "Doctors": "PR_QUEUE",
+                    "Other staff": "BO_QUEUE"
+                }
+                queue_step = role_queue_step.get(role)
                 
-                # Find the queue length at end of operational day
-                if len(metrics.time_stamps) > 0:
-                    closest_idx = min(range(len(metrics.time_stamps)), 
-                                    key=lambda i: abs(metrics.time_stamps[i] - end_of_open_time))
-                    end_of_day_queue = metrics.queues[role][closest_idx]
-                    daily_util = min(1.0, end_of_day_queue / max(1, capacity * 2))
-                else:
-                    daily_util = 0.0
+                tasks_served_today = sum(1 for t, name, step, note, arr in metrics.events
+                                        if step == queue_step and day_start <= t < day_end)
+                
+                available_capacity_minutes = capacity * avail_minutes_per_day
+                
+                # Get average service time for this role
+                avg_service_time = {
+                    "Administrative staff": p.get("svc_frontdesk", 10),
+                    "Nurse": p.get("svc_nurse", 15),
+                    "Doctors": p.get("svc_provider", 20),
+                    "Other staff": p.get("svc_backoffice", 12)
+                }.get(role, 10)
+                
+                estimated_work_time = tasks_served_today * avg_service_time
+                daily_util = min(1.0, estimated_work_time / max(1, available_capacity_minutes))
                 
                 # 2. REWORK - count INSUFF events TODAY ONLY
                 daily_loops = sum(1 for t, name, step, note, arr in metrics.events 
@@ -2253,6 +2286,29 @@ elif st.session_state.wizard_step == 2:
             help_icon("**Calculation:** Tracks tasks waiting in each queue every minute (mean ± SD). "
                  "**Interpretation:** Persistent high queues = bottlenecks.",
                  title="How is Queue Backlog Trend graph calculated?")
+
+    st.markdown("---")
+        
+        # Add daily utilization graph
+        col1, col2 = st.columns(2)
+        with col1:
+            fig_daily_util = plot_daily_utilization(all_metrics, p, active_roles)
+            st.pyplot(fig_daily_util, use_container_width=False)
+            plt.close(fig_daily_util)
+        
+        with col2:
+            pass  # Empty column for balance
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            help_icon("**Calculation:** For each role per day: (estimated work time / available capacity time) × 100. "
+                 "Work time estimated as: tasks served × average service time.\n\n"
+                 "**Interpretation:** Shows what % of staff time is spent actively working. "
+                 "75-90% = healthy utilization. >90% = high stress. "
+                 "This metric directly feeds into the Utilization burnout component.",
+                 title="How is Daily Staff Utilization calculated?")
+        with col2:
+            pass  # Empty column for balance
 
     # Response Times (Patient Care) - Collapsible
     with st.expander("Response Times (Patient Care)", expanded=False):
