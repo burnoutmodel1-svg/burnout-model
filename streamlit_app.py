@@ -2239,7 +2239,8 @@ elif st.session_state.wizard_step == 2:
             data=excel_file,
             file_name=f"CHC_Simulation_Results_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            use_container_width=True)
+            use_container_width=True
+        )
 
     # System Performance - Collapsible
     with st.expander("  System Performance", expanded=False):
@@ -2385,7 +2386,4 @@ elif st.session_state.wizard_step == 2:
         
         with col2:
             pass  # Empty column for balance
-
-        )
     
-    st.markdown("---")
