@@ -1945,14 +1945,70 @@ if st.session_state.wizard_step == 1:
         saved = st.form_submit_button("Save", type="primary")
 
         if saved:
+            # Save ALL form values back to session state
+            st.session_state.sim_days = sim_days
+            st.session_state.open_hours = open_hours
+            st.session_state.cv_speed_label = cv_speed_label
+            st.session_state.num_replications = num_replications
+    
+            # Staff capacities
             st.session_state.fd_cap = fd_cap_form
             st.session_state.nurse_cap = nu_cap_form
             st.session_state.provider_cap = pr_cap_form
-            st.session_state.bo_cap = bo_cap_form
+            st.session_state.backoffice_cap = bo_cap_form
+    
+            # Arrivals
+            st.session_state.arr_fd = arr_fd
+            st.session_state.arr_nu = arr_nu
+            st.session_state.arr_pr = arr_pr
+            st.session_state.arr_bo = arr_bo
+    
+            # Availability
+            st.session_state.avail_fd = avail_fd
+            st.session_state.avail_nu = avail_nu
+            st.session_state.avail_pr = avail_pr
+            st.session_state.avail_bo = avail_bo
             
+            # Burnout weights
+            st.session_state.w_utilization = w_utilization
+            st.session_state.w_availability_stress = w_availability_stress
+            st.session_state.w_rework = w_rework
+            st.session_state.w_task_switching = w_task_switching
+            st.session_state.w_incompletion = w_incompletion
+            st.session_state.w_throughput_deficit = w_throughput_deficit
+    
+            # Service times
+            st.session_state.svc_frontdesk = svc_frontdesk
+            st.session_state.svc_nurse_protocol = svc_nurse_protocol
+            st.session_state.svc_nurse = svc_nurse
+            st.session_state.p_protocol = p_protocol
+            st.session_state.svc_provider = svc_provider
+            st.session_state.svc_backoffice = svc_backoffice
+    
+            # Loop parameters - Front desk
+            st.session_state.p_fd_insuff = p_fd_insuff
+            st.session_state.max_fd_loops = max_fd_loops
+            st.session_state.fd_loop_delay = fd_loop_delay
+    
+            # Loop parameters - Nurse
+            st.session_state.p_nurse_insuff = p_nurse_insuff
+            st.session_state.max_nurse_loops = max_nurse_loops
+        
+            # Loop parameters - Provider
+            st.session_state.p_provider_insuff = p_provider_insuff
+            st.session_state.max_provider_loops = max_provider_loops
+            st.session_state.provider_loop_delay = provider_loop_delay
+    
+            # Loop parameters - Back office
+            st.session_state.p_backoffice_insuff = p_backoffice_insuff
+            st.session_state.max_backoffice_loops = max_backoffice_loops
+            st.session_state.backoffice_loop_delay = backoffice_loop_delay
+    
+            # Calculate derived values
             open_minutes = int(open_hours * MIN_PER_HOUR)
             sim_minutes = int(sim_days * DAY_MIN)
 
+            # Clean up routes
             for r in ROLES:
                 if r in route:
                     route[r].pop(r, None)
@@ -1962,33 +2018,29 @@ if st.session_state.wizard_step == 1:
                         if tgt in ROLES and {"Administrative staff": fd_cap_form, "Nurse": nu_cap_form, "Doctors": pr_cap_form, "Other staff": bo_cap_form}[tgt] == 0:
                             route[r][tgt] = 0.0
 
+            # Save design configuration
             st.session_state["design"] = dict(
                 sim_minutes=sim_minutes, open_minutes=open_minutes,
                 seed=seed, num_replications=num_replications,
                 frontdesk_cap=fd_cap_form, nurse_cap=nu_cap_form,
                 provider_cap=pr_cap_form, backoffice_cap=bo_cap_form,
                 arrivals_per_hour_by_role={"Administrative staff": int(arr_fd), "Nurse": int(arr_nu), 
-                                          "Doctors": int(arr_pr), "Other staff": int(arr_bo)},
+                                  "Doctors": int(arr_pr), "Other staff": int(arr_bo)},
                 availability_per_day={"Administrative staff": int(avail_fd), "Nurse": int(avail_nu),
                       "Doctors": int(avail_pr), "Other staff": int(avail_bo)},
                 svc_frontdesk=svc_frontdesk, svc_nurse_protocol=svc_nurse_protocol, svc_nurse=svc_nurse,
                 svc_provider=svc_provider, svc_backoffice=svc_backoffice,
                 dist_role={"Administrative staff": "normal", "NurseProtocol": "normal", "Nurse": "exponential",
-                          "Doctors": "exponential", "Other staff": "exponential"},
+                  "Doctors": "exponential", "Other staff": "exponential"},
                 cv_speed=cv_speed,
                 emr_overhead={"Administrative staff": 0.5, "Nurse": 0.5, "NurseProtocol": 0.5, "Doctors": 0.5, "Other staff": 0.5},
                 burnout_weights={
-                    # Emotional Exhaustion contributors
-                    "utilization": w_utilization,                    # Weight for workload intensity (0-10)
-                    "availability_stress": w_availability_stress,    # Weight for limited work time (0-10)
-            
-                    # Depersonalization contributors
-                    "rework": w_rework,                             # Weight for correction/loop time (0-10)
-                    "task_switching": w_task_switching,             # Weight for queue volatility (0-10)
-            
-                    # Reduced Accomplishment contributors
-                    "incompletion": w_incompletion,                 # Weight for incomplete tasks (0-10)
-                     "throughput_deficit": w_throughput_deficit      # Weight for falling behind (0-10)
+                    "utilization": w_utilization,
+                    "availability_stress": w_availability_stress,
+                    "rework": w_rework,
+                    "task_switching": w_task_switching,
+                    "incompletion": w_incompletion,
+                    "throughput_deficit": w_throughput_deficit
                 },
                 p_fd_insuff=p_fd_insuff, max_fd_loops=max_fd_loops, fd_loop_delay=fd_loop_delay,
                 p_nurse_insuff=p_nurse_insuff, max_nurse_loops=max_nurse_loops,
