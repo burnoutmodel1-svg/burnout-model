@@ -4066,8 +4066,6 @@ elif st.session_state.wizard_step == 2:
         
         with col2:
             pass  # Empty column for balance
-
-        )
     
     st.markdown("---")
 
