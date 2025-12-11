@@ -2081,11 +2081,9 @@ elif st.session_state.wizard_step == 2:
     events_df = pd.DataFrame(all_events_data)
     
     st.markdown(f"## Results")
-
-    st.markdown("---")
-
+    
     # Summary Table
-    st.markdown("### Summary")
+    st.markdown("### Summary Table")
     summary_df = create_summary_table(all_metrics, p, burnout_data, active_roles)
     st.dataframe(summary_df, use_container_width=True, hide_index=True)
 
