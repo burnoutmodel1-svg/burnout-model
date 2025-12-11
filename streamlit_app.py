@@ -1084,17 +1084,15 @@ def plot_burnout_over_days(all_metrics: List[Metrics], p: Dict, active_roles: Li
                 day_start = d * DAY_MIN
                 day_end = day_start + open_minutes_per_day
                 
-                # 1. UTILIZATION - based on average queue that day
-                queue_sum_today = 0
-                queue_count_today = 0
-                for i, t in enumerate(metrics.time_stamps):
-                    if day_start <= t < day_end:
-                        queue_sum_today += metrics.queues[role][i]
-                        queue_count_today += 1
+                # 1. UTILIZATION - based on end-of-day queue
+                end_of_open_time = day_start + open_minutes_per_day
                 
-                if queue_count_today > 0:
-                    avg_queue_today = queue_sum_today / queue_count_today
-                    daily_util = min(1.0, avg_queue_today / max(1, capacity * 2))
+                # Find the queue length at end of operational day
+                if len(metrics.time_stamps) > 0:
+                    closest_idx = min(range(len(metrics.time_stamps)), 
+                                    key=lambda i: abs(metrics.time_stamps[i] - end_of_open_time))
+                    end_of_day_queue = metrics.queues[role][closest_idx]
+                    daily_util = min(1.0, end_of_day_queue / max(1, capacity * 2))
                 else:
                     daily_util = 0.0
                 
