@@ -948,6 +948,7 @@ def plot_daily_workload(all_metrics: List[Metrics], p: Dict, active_roles: List[
 def plot_burnout_over_days(all_metrics: List[Metrics], p: Dict, active_roles: List[str]):
     """
     Line graph showing burnout score by role over days using DAILY metrics.
+    Each day's burnout is calculated based ONLY on that day's activity.
     """
     fig, ax = plt.subplots(figsize=(8, 4), dpi=100)
     colors = {'Administrative staff': '#1f77b4', 'Nurse': '#ff7f0e', 'Doctors': '#2ca02c', 'Other staff': '#d62728'}
@@ -983,12 +984,22 @@ def plot_burnout_over_days(all_metrics: List[Metrics], p: Dict, active_roles: Li
         
         avail_minutes_per_day = p.get("availability_per_day", {}).get(role, open_minutes_per_day)
         
+        # Map role to INSUFF step code
+        loop_step_map = {
+            "Administrative staff": "FD_INSUFF",
+            "Nurse": "NU_INSUFF",
+            "Doctors": "PR_INSUFF",
+            "Other staff": "BO_INSUFF"
+        }
+        insuff_step = loop_step_map[role]
+        
         for metrics in all_metrics:
+            # Calculate burnout for EACH day independently
             for d in range(num_days):
                 day_start = d * DAY_MIN
                 day_end = day_start + open_minutes_per_day
                 
-                # 1. UTILIZATION - based on queue activity
+                # 1. UTILIZATION - based on average queue that day
                 queue_sum_today = 0
                 queue_count_today = 0
                 for i, t in enumerate(metrics.time_stamps):
@@ -996,49 +1007,46 @@ def plot_burnout_over_days(all_metrics: List[Metrics], p: Dict, active_roles: Li
                         queue_sum_today += metrics.queues[role][i]
                         queue_count_today += 1
                 
-                avg_queue_today = queue_sum_today / max(1, queue_count_today)
-                # Utilization proxy: normalize queue by capacity (0-1 scale, then cap at 1.0)
-                daily_util = min(1.0, avg_queue_today / max(1, capacity * 2))
+                if queue_count_today > 0:
+                    avg_queue_today = queue_sum_today / queue_count_today
+                    daily_util = min(1.0, avg_queue_today / max(1, capacity * 2))
+                else:
+                    daily_util = 0.0
                 
-                # 2. REWORK - count of loops today
-                daily_loops = 0
-                loop_step_map = {
-                    "Administrative staff": "FD_INSUFF",
-                    "Nurse": "NU_INSUFF",
-                    "Doctors": "PR_INSUFF",
-                    "Other staff": "BO_INSUFF"
-                }
-                for t, name, step, note, arr in metrics.events:
-                    if step == loop_step_map.get(role) and day_start <= t < day_end:
-                        daily_loops += 1
+                # 2. REWORK - count INSUFF events TODAY ONLY
+                daily_loops = sum(1 for t, name, step, note, arr in metrics.events 
+                                 if step == insuff_step and day_start <= t < day_end)
                 
-                # Normalize loops (more than 5 loops is extreme)
+                # Normalize: 5+ loops = maximum (1.0)
                 daily_rework = min(1.0, daily_loops / 5.0)
                 
-                # 3. TASK SWITCHING - queue volatility today
+                # 3. TASK SWITCHING - queue volatility TODAY ONLY
                 day_queue_samples = [metrics.queues[role][i] for i, t in enumerate(metrics.time_stamps) 
                                     if day_start <= t < day_end]
                 
                 if len(day_queue_samples) > 1:
-                    q_std = np.std(day_queue_samples)
                     q_mean = np.mean(day_queue_samples)
-                    daily_volatility = min(1.0, (q_std / max(1e-6, q_mean)))
+                    q_std = np.std(day_queue_samples)
+                    if q_mean > 0:
+                        daily_volatility = min(1.0, q_std / q_mean)
+                    else:
+                        daily_volatility = 0.0
                 else:
                     daily_volatility = 0.0
                 
-                # 4. INCOMPLETION - tasks not finished same day
+                # 4. INCOMPLETION - tasks that arrived today but didn't finish today
                 tasks_arrived_today = [k for k, at in metrics.task_arrival_time.items() 
                                       if day_start <= at < day_end]
-                tasks_completed_same_day = [k for k in tasks_arrived_today 
-                                           if k in metrics.task_completion_time 
-                                           and metrics.task_completion_time[k] < day_end]
                 
                 if tasks_arrived_today:
-                    daily_incompletion = 1.0 - (len(tasks_completed_same_day) / len(tasks_arrived_today))
+                    tasks_completed_same_day = sum(1 for k in tasks_arrived_today 
+                                                   if k in metrics.task_completion_time 
+                                                   and metrics.task_completion_time[k] < day_end)
+                    daily_incompletion = 1.0 - (tasks_completed_same_day / len(tasks_arrived_today))
                 else:
                     daily_incompletion = 0.0
                 
-                # 5. THROUGHPUT DEFICIT
+                # 5. THROUGHPUT DEFICIT - completed today vs expected today
                 tasks_completed_today = sum(1 for ct in metrics.task_completion_time.values() 
                                            if day_start <= ct < day_end)
                 expected_daily = p["arrivals_per_hour_by_role"].get(role, 1) * open_minutes_per_day / 60.0
@@ -1048,25 +1056,25 @@ def plot_burnout_over_days(all_metrics: List[Metrics], p: Dict, active_roles: Li
                 else:
                     daily_throughput_deficit = 0.0
                 
-                # 6. AVAILABILITY STRESS
+                # 6. AVAILABILITY STRESS (constant each day)
                 avail_stress = (open_minutes_per_day - float(avail_minutes_per_day)) / open_minutes_per_day
                 avail_stress = min(max(avail_stress, 0.0), 1.0)
                 
-                # SIMPLER transformations - less dampening
+                # Convert to 0-100 scale (direct mapping, minimal transformation)
                 components = {
-                    "utilization": 100.0 * daily_util ** 0.8,  # Slight dampening
+                    "utilization": 100.0 * daily_util,
                     "availability_stress": 100.0 * avail_stress,
-                    "rework": 100.0 * daily_rework,  # Direct mapping
-                    "task_switching": 100.0 * daily_volatility,  # Direct mapping
-                    "incompletion": 100.0 * daily_incompletion,  # Direct mapping
-                    "throughput_deficit": 100.0 * daily_throughput_deficit  # Direct mapping
+                    "rework": 100.0 * daily_rework,
+                    "task_switching": 100.0 * daily_volatility,
+                    "incompletion": 100.0 * daily_incompletion,
+                    "throughput_deficit": 100.0 * daily_throughput_deficit
                 }
                 
-                # Calculate daily burnout
+                # Calculate weighted burnout score for this day
                 burnout_score = sum(norm_weights[k] * components[k] for k in components.keys())
                 daily_burnout_per_rep[d].append(burnout_score)
         
-        # Calculate mean and std across replications
+        # Calculate mean and std across replications for each day
         means = [np.mean(daily_burnout_per_rep[d]) if daily_burnout_per_rep[d] else 0 
                 for d in range(num_days)]
         stds = [np.std(daily_burnout_per_rep[d]) if len(daily_burnout_per_rep[d]) > 1 else 0 
@@ -1074,13 +1082,16 @@ def plot_burnout_over_days(all_metrics: List[Metrics], p: Dict, active_roles: Li
         
         x = np.arange(1, num_days + 1)
         
+        # Plot line
         ax.plot(x, means, color=colors.get(role, '#333333'), 
                linewidth=2.5, marker='o', markersize=6, label=role, alpha=0.9)
         
+        # Add confidence band
         upper = [means[i] + stds[i] for i in range(num_days)]
         lower = [max(0, means[i] - stds[i]) for i in range(num_days)]
         ax.fill_between(x, lower, upper, color=colors.get(role, '#333333'), alpha=0.1)
     
+    # Add burnout threshold lines
     ax.axhline(y=50, color='orange', linestyle='--', alpha=0.4, linewidth=1.5, label='Moderate burnout (50)')
     ax.axhline(y=75, color='red', linestyle='--', alpha=0.4, linewidth=1.5, label='High burnout (75)')
     
