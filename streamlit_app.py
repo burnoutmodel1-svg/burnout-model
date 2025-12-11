@@ -2222,6 +2222,27 @@ elif st.session_state.wizard_step == 2:
 
     st.markdown("---")
 
+    st.markdown("---")
+
+    # Summary Table (second, always visible)
+    st.markdown("### Summary")
+    summary_df = create_summary_table(all_metrics, p, burnout_data, active_roles)
+    st.dataframe(summary_df, use_container_width=True, hide_index=True)
+
+    # ADD THIS SECTION HERE:
+    st.markdown("---")
+    st.markdown("### Export Results")
+    
+    excel_file = create_excel_download(all_metrics, p, burnout_data, active_roles, agg_results)
+    
+    if excel_file:
+        st.download_button(
+            label="📥 Download Results as Excel",
+            data=excel_file,
+            file_name=f"CHC_Simulation_Results_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True
+
     # System Performance - Collapsible
     with st.expander("## System Performance", expanded=False):
         st.caption("How well is the clinic handling incoming work?")
@@ -2367,27 +2388,6 @@ elif st.session_state.wizard_step == 2:
         with col2:
             pass  # Empty column for balance
 
-
-st.markdown("---")
-
-    # Summary Table (second, always visible)
-    st.markdown("### Summary")
-    summary_df = create_summary_table(all_metrics, p, burnout_data, active_roles)
-    st.dataframe(summary_df, use_container_width=True, hide_index=True)
-
-    # ADD THIS SECTION HERE:
-    st.markdown("---")
-    st.markdown("### Export Results")
-    
-    excel_file = create_excel_download(all_metrics, p, burnout_data, active_roles, agg_results)
-    
-    if excel_file:
-        st.download_button(
-            label="📥 Download Results as Excel",
-            data=excel_file,
-            file_name=f"CHC_Simulation_Results_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            use_container_width=True
         )
     
     st.markdown("---")
