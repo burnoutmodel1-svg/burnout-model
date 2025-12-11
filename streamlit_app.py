@@ -338,21 +338,30 @@ def task_lifecycle(env, task_id: str, s: CHCSystem, initial_role: str):
 def arrival_process_for_role(env, s: CHCSystem, role_name: str, rate_per_hour: int):
     i = 0
     lam = max(0, int(rate_per_hour)) / 60.0
+    open_minutes = s.p["open_minutes"]
+    
     while True:
+        # If clinic is closed, wait until it opens
+        if not is_open(env.now, open_minutes):
+            yield env.timeout(minutes_until_open(env.now, open_minutes))
+        
+        # Calculate time until closing
+        time_until_close = minutes_until_close(env.now, open_minutes)
+        
+        # Generate inter-arrival time
         inter = random.expovariate(lam) if lam > 0 else 999999999
+        
+        # If arrival would happen after closing, wait until next opening
+        if inter >= time_until_close:
+            yield env.timeout(time_until_close)
+            yield env.timeout(minutes_until_open(env.now, open_minutes))
+            # Reset inter-arrival for next day
+            inter = random.expovariate(lam) if lam > 0 else 999999999
+        
         yield env.timeout(inter)
         i += 1
         task_id = f"{role_name[:2].upper()}-{i:05d}"
         env.process(task_lifecycle(env, task_id, s, initial_role=role_name))
-
-def monitor(env, s: CHCSystem):
-    while True:
-        s.m.time_stamps.append(env.now)
-        for r in ROLES:
-            res = s.role_to_res[r]
-            self_q = len(res.queue) if res is not None else 0
-            s.m.queues[r].append(self_q)
-        yield env.timeout(1)
 
 # =============================
 # Run single replication
