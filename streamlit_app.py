@@ -2222,8 +2222,6 @@ elif st.session_state.wizard_step == 2:
 
     st.markdown("---")
 
-    st.markdown("---")
-
     # Summary Table (second, always visible)
     st.markdown("### Summary")
     summary_df = create_summary_table(all_metrics, p, burnout_data, active_roles)
