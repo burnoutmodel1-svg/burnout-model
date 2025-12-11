@@ -2021,7 +2021,7 @@ if st.session_state.wizard_step == 1:
         
 # -------- STEP 2: RUN & RESULTS --------
 elif st.session_state.wizard_step == 2:
-    st.markdown("  Simulation Run")
+    st.markdown("## Simulation Run")
     st.button("← Back to Design", on_click=go_back)
 
     if not st.session_state["design"]:
@@ -2074,16 +2074,17 @@ elif st.session_state.wizard_step == 2:
             })
     events_df = pd.DataFrame(all_events_data)
     
-    st.markdown(f"  Results")
+    st.markdown(f"## Results")
 
-    # Summary Table (second, always visible)
-    st.markdown("  Summary")
+    st.markdown("---")
+
+    # Summary Table
+    st.markdown("### Summary")
     summary_df = create_summary_table(all_metrics, p, burnout_data, active_roles)
     st.dataframe(summary_df, use_container_width=True, hide_index=True)
 
-
     # System Performance - Collapsible
-    with st.expander("  System Performance", expanded=False):
+    with st.expander("System Performance", expanded=False):
         st.caption("How well is the clinic handling incoming work?")
         
         col1, col2 = st.columns(2)
@@ -2109,7 +2110,7 @@ elif st.session_state.wizard_step == 2:
                  title="How is Queue Backlog Trend graph calculated?")
 
     # Response Times (Patient Care) - Collapsible
-    with st.expander("  Response Times (Patient Care)", expanded=False):
+    with st.expander("Response Times (Patient Care)", expanded=False):
         st.caption("How quickly are tasks being completed?")
         
         col1, col2 = st.columns(2)
@@ -2141,7 +2142,7 @@ elif st.session_state.wizard_step == 2:
                  title="How is Task Completion Timeline calculated?")
 
     # Workload - Collapsible
-    with st.expander("  Workload", expanded=False):
+    with st.expander("Workload", expanded=False):
         st.caption("How is workload distributed and evolving over time?")
         
         # First row: Daily Workload and Burnout Over Days
@@ -2202,7 +2203,7 @@ elif st.session_state.wizard_step == 2:
         st.markdown("---")
         
         # Third row: Overtime Needed
-        st.markdown("  Capacity Analysis")
+        st.markdown("### Capacity Analysis")
         
         col1, col2 = st.columns(2)
         with col1:
@@ -2227,7 +2228,7 @@ elif st.session_state.wizard_step == 2:
         with col2:
             pass  # Empty column for balance
     
-    # Excel download - MUST be at Step 2 level (no indentation)
+    # Excel download - at the very end
     st.markdown("---")
     st.markdown("### Export Results")
     
@@ -2241,4 +2242,3 @@ elif st.session_state.wizard_step == 2:
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             use_container_width=True
         )
-    
