@@ -1869,7 +1869,7 @@ if st.session_state.wizard_step == 1:
         return row
                          
     with st.form("design_form", clear_on_submit=False):
-        st.markdown("### Simulation horizon")
+        st.markdown("  Simulation horizon")
         sim_days = st.number_input("Days to simulate", 1, 30, _init_ss("sim_days", 5), 1, "%d",
                                help="Number of clinic operating days to simulate")
         open_hours = st.number_input("Hours open per day", 1, 24, _init_ss("open_hours", 8), 1, "%d",
@@ -1877,7 +1877,7 @@ if st.session_state.wizard_step == 1:
     
         seed = 42  # Fixed seed for reproducibility
 
-        st.markdown("### Roles")
+        st.markdown("  Roles")
         st.caption("Configure staffing, arrivals, and availability for each role")
     
         with st.expander("Administrative staff", expanded=False):
@@ -1928,7 +1928,7 @@ if st.session_state.wizard_step == 1:
                 avail_bo = st.number_input("Availability (min/day)", 0, 480, _init_ss("avail_bo", 180), 1, "%d", disabled=(bo_cap_form==0), key="avail_bo_input",
                                help="Minutes per day available for work (max = hours open × 60)")
 
-        st.markdown("### Simulation Settings")
+        st.markdown("  Simulation Settings")
         st.caption("Configure variability and number of simulation runs")
     
         cv_speed_label = st.select_slider(
@@ -1952,7 +1952,7 @@ if st.session_state.wizard_step == 1:
 
         with st.expander("Advanced Settings – Processing times, loops & routing", expanded=False):
         
-            st.markdown("### Contributors to Burnout-Relative Weights")
+            st.markdown("  Contributors to Burnout-Relative Weights")
             st.caption("Assign each factor a weight between 0 and 10 (0 = no contribution, 10 = maximum contribution)")
 
             col1, col2 = st.columns(2)
@@ -2216,20 +2216,20 @@ elif st.session_state.wizard_step == 2:
     st.markdown("---")
 
     # Summary Table (second, always visible)
-    st.markdown("### Summary")
+    st.markdown("  Summary")
     summary_df = create_summary_table(all_metrics, p, burnout_data, active_roles)
     st.dataframe(summary_df, use_container_width=True, hide_index=True)
 
     st.markdown("---")
 
     # Summary Table (second, always visible)
-    st.markdown("### Summary")
+    st.markdown("  Summary")
     summary_df = create_summary_table(all_metrics, p, burnout_data, active_roles)
     st.dataframe(summary_df, use_container_width=True, hide_index=True)
 
     # ADD THIS SECTION HERE:
     st.markdown("---")
-    st.markdown("### Export Results")
+    st.markdown("  Export Results")
     
     excel_file = create_excel_download(all_metrics, p, burnout_data, active_roles, agg_results)
     
@@ -2361,7 +2361,7 @@ elif st.session_state.wizard_step == 2:
         st.markdown("---")
         
         # Third row: Overtime Needed
-        st.markdown("### Capacity Analysis")
+        st.markdown("  Capacity Analysis")
         
         col1, col2 = st.columns(2)
         with col1:
