@@ -1027,15 +1027,27 @@ def plot_burnout_over_days(all_metrics: List[Metrics], p: Dict, active_roles: Li
                 else:
                     daily_volatility = 0.0
                 
-                # 4. INCOMPLETION - tasks that arrived today but didn't finish today
-                tasks_arrived_today = [k for k, at in metrics.task_arrival_time.items() 
-                                      if day_start <= at < day_end]
-                
-                if tasks_arrived_today:
-                    tasks_completed_same_day = sum(1 for k in tasks_arrived_today 
-                                                   if k in metrics.task_completion_time 
-                                                   and metrics.task_completion_time[k] < day_end)
-                    daily_incompletion = 1.0 - (tasks_completed_same_day / len(tasks_arrived_today))
+                # 4. INCOMPLETION - tasks that arrived at THIS ROLE today but didn't finish today
+                role_step_map = {
+                    "Administrative staff": "FD_QUEUE",
+                    "Nurse": "NU_QUEUE", 
+                    "Doctors": "PR_QUEUE",
+                    "Other staff": "BO_QUEUE"
+                }
+                queue_step = role_step_map[role]
+
+                # Find tasks that queued at this role today
+                tasks_at_role_today = set()
+                for t, name, step, note, arr in metrics.events:
+                    if step == queue_step and day_start <= t < day_end:
+                        tasks_at_role_today.add(name)
+
+                if tasks_at_role_today:
+                    # Of those tasks, how many completed (anywhere in the workflow) by end of day?
+                    tasks_completed_same_day = sum(1 for task_id in tasks_at_role_today
+                                                   if task_id in metrics.task_completion_time
+                                                   and metrics.task_completion_time[task_id] < day_end)
+                    daily_incompletion = 1.0 - (tasks_completed_same_day / len(tasks_at_role_today))
                 else:
                     daily_incompletion = 0.0
                 
