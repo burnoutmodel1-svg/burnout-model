@@ -2254,6 +2254,28 @@ elif st.session_state.wizard_step == 2:
                  "**Interpretation:** More green (same day) = better patient care. "
                  "Red bars (+3/+4 days) indicate significant delays.",
                  title="How is Task Completion Timeline calculated?")
+        
+        st.markdown("---")
+        
+        # Add the new daily completion rate graph
+        col1, col2 = st.columns(2)
+        with col1:
+            fig_daily_completion = plot_daily_completion_rate(all_metrics, p, active_roles)
+            st.pyplot(fig_daily_completion, use_container_width=False)
+            plt.close(fig_daily_completion)
+        
+        with col2:
+            pass  # Empty column for balance
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            help_icon("**Calculation:** For each day, calculates: (tasks completed same day / tasks arrived that day) × 100\n\n"
+                 "**Interpretation:** Higher completion rate = better same-day resolution. "
+                 "Lower rate = more tasks carried over to next day. "
+                 "This metric directly feeds into the Incompletion burnout component (Incompletion = 100 - Completion Rate).",
+                 title="How is Daily Same-Day Task Completion calculated?")
+        with col2:
+            pass  # Empty column for balance
 
     # Workload - Collapsible
     with st.expander("Workload", expanded=False):
