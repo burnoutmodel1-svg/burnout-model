@@ -342,8 +342,10 @@ def arrival_process_for_role(env, s: CHCSystem, role_name: str, rate_per_hour: i
     
     while True:
         # If clinic is closed, wait until it opens
-        if not is_open(env.now, open_minutes):
-            yield env.timeout(minutes_until_open(env.now, open_minutes))
+        current_time = env.now
+        if not is_open(current_time, open_minutes):
+            wait_time = minutes_until_open(current_time, open_minutes)
+            yield env.timeout(wait_time)
         
         # Calculate time until closing
         time_until_close = minutes_until_close(env.now, open_minutes)
@@ -351,13 +353,16 @@ def arrival_process_for_role(env, s: CHCSystem, role_name: str, rate_per_hour: i
         # Generate inter-arrival time
         inter = random.expovariate(lam) if lam > 0 else 999999999
         
-        # If arrival would happen after closing, wait until next opening
+        # If arrival would happen after closing, wait until next day
         if inter >= time_until_close:
+            # Wait until closing
             yield env.timeout(time_until_close)
-            yield env.timeout(minutes_until_open(env.now, open_minutes))
-            # Reset inter-arrival for next day
-            inter = random.expovariate(lam) if lam > 0 else 999999999
+            # Wait until next opening
+            wait_open = minutes_until_open(env.now, open_minutes)
+            yield env.timeout(wait_open)
+            continue  # Start new iteration to generate new arrival
         
+        # Normal arrival during open hours
         yield env.timeout(inter)
         i += 1
         task_id = f"{role_name[:2].upper()}-{i:05d}"
