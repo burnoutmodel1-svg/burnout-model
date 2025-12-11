@@ -1351,51 +1351,6 @@ def plot_overtime_needed(all_metrics: List[Metrics], p: Dict, active_roles: List
     plt.tight_layout()
     return fig
 
-def create_kpi_banner(all_metrics: List[Metrics], p: Dict, burnout_data: Dict, active_roles: List[str]):
-    """
-    Create a simple one-line banner showing key burnout metrics.
-    """
-    # Calculate average component scores across all roles
-    all_utilization = []
-    all_rework = []
-    all_task_switching = []
-    all_incompletion = []
-    
-    for r in active_roles:
-        if r in burnout_data["by_role"]:
-            components = burnout_data["by_role"][r].get("components", {})
-            all_utilization.append(components.get("utilization", 0.0))
-            all_rework.append(components.get("rework", 0.0))
-            all_task_switching.append(components.get("task_switching", 0.0))
-            all_incompletion.append(components.get("incompletion", 0.0))
-    
-    avg_utilization = np.mean(all_utilization) if all_utilization else 0.0
-    avg_rework = np.mean(all_rework) if all_rework else 0.0
-    avg_task_switching = np.mean(all_task_switching) if all_task_switching else 0.0
-    avg_incompletion = np.mean(all_incompletion) if all_incompletion else 0.0
-    
-    overall_burnout = burnout_data["overall_clinic"]
-    
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        st.metric("Overall Burnout", f"{overall_burnout:.1f}")
-    
-    with col2:
-        st.metric("Utilization Stress", f"{avg_utilization:.1f}")
-    
-    with col3:
-        st.metric("Rework Stress", f"{avg_rework:.1f}")
-    
-    with col4:
-        st.metric("Task Switching", f"{avg_task_switching:.1f}")
-
-def help_icon(help_text: str, title: str = None):
-    if title is None:
-        title = "How is this calculated?"
-    with st.expander(title):
-        st.caption(help_text)
-
 def aggregate_replications(p: Dict, all_metrics: List[Metrics], active_roles: List[str]):
     num_reps = len(all_metrics)
     
@@ -2120,36 +2075,6 @@ elif st.session_state.wizard_step == 2:
     events_df = pd.DataFrame(all_events_data)
     
     st.markdown(f"  Results")
-
-    # KPI Banner (first, always visible)
-    create_kpi_banner(all_metrics, p, burnout_data, active_roles)
-
-    help_icon(
-        "**Overall Burnout (0-100):**\n"
-        "Clinic-wide burnout score averaged across all roles. Scale: 0-25 Low, 25-50 Moderate, 50-75 High, 75-100 Severe.\n\n"
-    
-        "**Component Scores (0-100 each, averaged across roles):**\n\n"
-    
-        "• **Utilization Stress (0-100)** - Measures workload intensity based on how much available time is consumed. "
-        "Uses non-linear scaling where utilization >75% creates exponentially higher stress (a staff member at 80% utilization "
-        "experiences much more than 5% more stress than at 75%).\n\n"
-    
-        "• **Rework Stress (0-100)** - Quantifies time wasted on corrections, loops, and re-processing tasks. "
-        "Calculated from the percentage of work time spent redoing work due to missing information or errors. "
-        "Uses quadratic penalty (rework² × 100) so doubling rework quadruples the stress.\n\n"
-    
-        "• **Task Switching (0-100)** - Measures unpredictability and context switching caused by volatile queue lengths. "
-        "Calculated from queue volatility (standard deviation ÷ mean). High scores indicate constantly changing priorities "
-        "and frequent interruptions.\n\n"
-    
-        "**How your custom weights affect these scores:**\n"
-        "You assigned weights (0-10) to six underlying factors: utilization, availability stress, rework, task switching, "
-        "incompletion, and throughput deficit. The component scores shown here are pre-weighted averages. The Overall Burnout "
-        "score combines all six weighted factors, normalized to 0-100.",
-        title="How are the burnout metrics calculated?"
-    )
-
-    st.markdown("---")
 
     # Summary Table (second, always visible)
     st.markdown("  Summary")
