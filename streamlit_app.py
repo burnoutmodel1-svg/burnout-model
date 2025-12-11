@@ -1564,11 +1564,11 @@ def aggregate_replications(p: Dict, all_metrics: List[Metrics], active_roles: Li
 
 def create_summary_table(all_metrics: List[Metrics], p: Dict, burnout_data: Dict, active_roles: List[str]):
     """
-    Create a comprehensive summary table showing key metrics across all categories.
+    Create a summary table organized by role (columns) and metric (rows).
     """
     num_reps = len(all_metrics)
     
-    # Calculate Patient Care metrics
+    # Calculate metrics
     turnaround_times_list = []
     for metrics in all_metrics:
         comp_times = metrics.task_completion_time
@@ -1583,40 +1583,38 @@ def create_summary_table(all_metrics: List[Metrics], p: Dict, burnout_data: Dict
     mean_turnaround = np.mean(turnaround_times_list) if turnaround_times_list else 0.0
     std_turnaround = np.std(turnaround_times_list, ddof=1) if len(turnaround_times_list) > 1 else 0.0
     
-    # Calculate Inefficiency metrics
-    total_reroutes_list = []
-    missing_info_pct_list = []
-    
+    # Reroutes by role
+    reroutes_by_role = {r: [] for r in active_roles}
     for metrics in all_metrics:
-        # Count re-routes (tasks that went through loops)
-        reroutes = (metrics.loop_fd_insufficient + 
-                   metrics.loop_nurse_insufficient + 
-                   metrics.loop_provider_insufficient + 
-                   metrics.loop_backoffice_insufficient)
-        total_reroutes_list.append(reroutes)
+        loop_counts = {
+            "Administrative staff": metrics.loop_fd_insufficient,
+            "Nurse": metrics.loop_nurse_insufficient,
+            "Doctors": metrics.loop_provider_insufficient,
+            "Other staff": metrics.loop_backoffice_insufficient
+        }
+        for role in active_roles:
+            reroutes_by_role[role].append(loop_counts[role])
+    
+    # Missing info by role
+    missing_info_by_role = {r: [] for r in active_roles}
+    for metrics in all_metrics:
+        role_missing = {r: 0 for r in active_roles}
         
-        # Calculate % of tasks with missing info
-        tasks_with_rework = set()
         for t, name, step, note, _arr in metrics.events:
-            if step.endswith("INSUFF") or "RECHECK" in step:
-                tasks_with_rework.add(name)
+            step_to_role = {
+                "FD_INSUFF": "Administrative staff",
+                "NU_INSUFF": "Nurse",
+                "PR_INSUFF": "Doctors",
+                "BO_INSUFF": "Other staff"
+            }
+            if step in step_to_role:
+                role_missing[step_to_role[step]] += 1
         
-        done_ids = set(metrics.task_completion_time.keys())
-        if len(done_ids) > 0:
-            missing_info_pct = 100.0 * len(tasks_with_rework & done_ids) / len(done_ids)
-            missing_info_pct_list.append(missing_info_pct)
-        else:
-            missing_info_pct_list.append(0.0)
+        for role in active_roles:
+            missing_info_by_role[role].append(role_missing[role])
     
-    mean_reroutes = np.mean(total_reroutes_list)
-    std_reroutes = np.std(total_reroutes_list, ddof=1) if len(total_reroutes_list) > 1 else 0.0
-    mean_missing_info = np.mean(missing_info_pct_list)
-    std_missing_info = np.std(missing_info_pct_list, ddof=1) if len(missing_info_pct_list) > 1 else 0.0
-    
-    # Calculate Utilization metrics
-    open_time_available = effective_open_minutes(p["sim_minutes"], p["open_minutes"])
+    # Utilization by role
     num_days = p["sim_minutes"] / DAY_MIN
-    
     util_by_role = {r: [] for r in active_roles}
     
     for metrics in all_metrics:
@@ -1635,74 +1633,35 @@ def create_summary_table(all_metrics: List[Metrics], p: Dict, burnout_data: Dict
                 util = 100.0 * min(1.0, total_service / max(1, total_available_capacity))
                 util_by_role[role].append(util)
     
-    # Get Burnout metrics
+    # Burnout by role
     burnout_by_role = {r: burnout_data["by_role"][r]["overall"] for r in active_roles}
     
     # Build the table data
-    table_data = []
+    table_data = {
+        "Metric": ["Re-routes", "Missing info", "Workload % util", "Burnout"]
+    }
     
-    # Patient Care
-    table_data.append({
-        "Focus": "Patient care",
-        "Measure": "Mean response time",
-        "Result": f"{mean_turnaround:.1f} ± {std_turnaround:.1f} min ({mean_turnaround/60:.1f} ± {std_turnaround/60:.1f} hrs)"
-    })
-    
-    # Inefficiency
-    table_data.append({
-        "Focus": "Inefficiency",
-        "Measure": "Re-routes",
-        "Result": f"{mean_reroutes:.1f} ± {std_reroutes:.1f}"
-    })
-    table_data.append({
-        "Focus": "",
-        "Measure": "Missing info",
-        "Result": f"{mean_missing_info:.1f}% ± {std_missing_info:.1f}%"
-    })
-    
-    # Utilization
-    table_data.append({
-        "Focus": "Utilization",
-        "Measure": "Administrative staff",
-        "Result": f"{np.mean(util_by_role['Administrative staff']):.1f}% ± {np.std(util_by_role['Administrative staff'], ddof=1):.1f}%" if util_by_role['Administrative staff'] else "N/A"
-    })
-    table_data.append({
-        "Focus": "",
-        "Measure": "Nurses",
-        "Result": f"{np.mean(util_by_role['Nurse']):.1f}% ± {np.std(util_by_role['Nurse'], ddof=1):.1f}%" if util_by_role['Nurse'] else "N/A"
-    })
-    table_data.append({
-        "Focus": "",
-        "Measure": "Doctors",
-        "Result": f"{np.mean(util_by_role['Doctors']):.1f}% ± {np.std(util_by_role['Doctors'], ddof=1):.1f}%" if util_by_role['Doctors'] else "N/A"
-    })
-    table_data.append({
-        "Focus": "",
-        "Measure": "Other staff",
-        "Result": f"{np.mean(util_by_role['Other staff']):.1f}% ± {np.std(util_by_role['Other staff'], ddof=1):.1f}%" if util_by_role['Other staff'] else "N/A"
-    })
-    
-    # Burnout
-    table_data.append({
-        "Focus": "Burnout",
-        "Measure": "Administrative staff",
-        "Result": f"{burnout_by_role['Administrative staff']:.1f}" if 'Administrative staff' in burnout_by_role else "N/A"
-    })
-    table_data.append({
-        "Focus": "",
-        "Measure": "Nurses",
-        "Result": f"{burnout_by_role['Nurse']:.1f}" if 'Nurse' in burnout_by_role else "N/A"
-    })
-    table_data.append({
-        "Focus": "",
-        "Measure": "Doctors",
-        "Result": f"{burnout_by_role['Doctors']:.1f}" if 'Doctors' in burnout_by_role else "N/A"
-    })
-    table_data.append({
-        "Focus": "",
-        "Measure": "Other staff",
-        "Result": f"{burnout_by_role['Other staff']:.1f}" if 'Other staff' in burnout_by_role else "N/A"
-    })
+    # Add columns for each role
+    for role in active_roles:
+        col_name = role.replace("Administrative staff", "Staff").replace("Doctors", "MDs")
+        
+        reroutes_mean = np.mean(reroutes_by_role[role])
+        reroutes_std = np.std(reroutes_by_role[role], ddof=1) if len(reroutes_by_role[role]) > 1 else 0.0
+        
+        missing_mean = np.mean(missing_info_by_role[role])
+        missing_std = np.std(missing_info_by_role[role], ddof=1) if len(missing_info_by_role[role]) > 1 else 0.0
+        
+        util_mean = np.mean(util_by_role[role]) if util_by_role[role] else 0.0
+        util_std = np.std(util_by_role[role], ddof=1) if len(util_by_role[role]) > 1 else 0.0
+        
+        burnout_val = burnout_by_role[role]
+        
+        table_data[col_name] = [
+            f"{reroutes_mean:.1f} ± {reroutes_std:.1f}",
+            f"{missing_mean:.1f} ± {missing_std:.1f}",
+            f"{util_mean:.1f}% ± {util_std:.1f}%",
+            f"{burnout_val:.1f}"
+        ]
     
     df = pd.DataFrame(table_data)
     return df
