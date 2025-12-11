@@ -1,4 +1,4 @@
-wafrom typing import Dict, List
+from typing import Dict, List
 import streamlit as st
 import simpy
 import random
