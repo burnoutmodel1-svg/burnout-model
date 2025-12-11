@@ -2221,14 +2221,6 @@ elif st.session_state.wizard_step == 2:
     st.dataframe(summary_df, use_container_width=True, hide_index=True)
 
     st.markdown("---")
-
-    # Summary Table (second, always visible)
-    st.markdown("  Summary")
-    summary_df = create_summary_table(all_metrics, p, burnout_data, active_roles)
-    st.dataframe(summary_df, use_container_width=True, hide_index=True)
-
-    # ADD THIS SECTION HERE:
-    st.markdown("---")
     st.markdown("  Export Results")
     
     excel_file = create_excel_download(all_metrics, p, burnout_data, active_roles, agg_results)
