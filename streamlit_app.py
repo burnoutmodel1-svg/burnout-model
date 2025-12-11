@@ -879,67 +879,78 @@ def plot_completion_by_day(all_metrics: List[Metrics], p: Dict):
 
 def plot_daily_completion_rate(all_metrics: List[Metrics], p: Dict, active_roles: List[str]):
     """
-    Line graph showing daily same-day completion rate (clinic-wide).
+    Line graph showing daily same-day completion rate BY ROLE.
     This directly corresponds to the incompletion burnout component.
+    Incompletion burnout = 100 - completion rate shown here.
     """
     fig, ax = plt.subplots(figsize=(8, 4), dpi=100)
+    colors = {'Administrative staff': '#1f77b4', 'Nurse': '#ff7f0e', 'Doctors': '#2ca02c', 'Other staff': '#d62728'}
     
     num_days = max(1, int(p["sim_minutes"] // DAY_MIN))
     open_minutes_per_day = p["open_minutes"]
     
-    daily_completion_rate_per_rep = [[] for _ in range(num_days)]
-    
-    for metrics in all_metrics:
-        for d in range(num_days):
-            day_start = d * DAY_MIN
-            day_end = day_start + open_minutes_per_day
-            
-            # Count ALL tasks that arrived today (clinic-wide)
-            # This matches the incompletion calculation in plot_burnout_over_days
-            tasks_arrived_today = [k for k, at in metrics.task_arrival_time.items() 
-                                  if day_start <= at < day_end]
-            
-            if tasks_arrived_today:
-                tasks_completed_same_day = sum(1 for k in tasks_arrived_today 
-                                               if k in metrics.task_completion_time 
-                                               and metrics.task_completion_time[k] < day_end)
-                completion_rate = (tasks_completed_same_day / len(tasks_arrived_today)) * 100
-                daily_completion_rate_per_rep[d].append(completion_rate)
-            else:
-                daily_completion_rate_per_rep[d].append(0.0)
-    
-    # Calculate mean and std across replications for each day
-    means = [np.mean(daily_completion_rate_per_rep[d]) if daily_completion_rate_per_rep[d] else 0 
-            for d in range(num_days)]
-    stds = [np.std(daily_completion_rate_per_rep[d]) if len(daily_completion_rate_per_rep[d]) > 1 else 0 
-           for d in range(num_days)]
-    
-    x = np.arange(1, num_days + 1)
-    
-    # Plot line
-    ax.plot(x, means, color='#2ca02c', 
-           linewidth=2.5, marker='o', markersize=7, label='Clinic-wide Completion', alpha=0.9)
-    
-    # Add confidence band
-    upper = [means[i] + stds[i] for i in range(num_days)]
-    lower = [max(0, means[i] - stds[i]) for i in range(num_days)]
-    ax.fill_between(x, lower, upper, color='#2ca02c', alpha=0.15)
+    for role in active_roles:
+        daily_completion_rate_per_rep = [[] for _ in range(num_days)]
+        
+        # Determine which tasks belong to this role (by prefix)
+        role_prefix_map = {
+            "Administrative staff": "AD",
+            "Nurse": "NU",
+            "Doctors": "DO",
+            "Other staff": "OT"
+        }
+        prefix = role_prefix_map.get(role, "")
+        
+        for metrics in all_metrics:
+            for d in range(num_days):
+                day_start = d * DAY_MIN
+                day_end = day_start + open_minutes_per_day
+                
+                # Count tasks that belong to THIS ROLE and arrived today
+                tasks_arrived_today = [k for k, at in metrics.task_arrival_time.items() 
+                                      if day_start <= at < day_end and k.startswith(prefix)]
+                
+                if tasks_arrived_today:
+                    tasks_completed_same_day = sum(1 for k in tasks_arrived_today 
+                                                   if k in metrics.task_completion_time 
+                                                   and metrics.task_completion_time[k] < day_end)
+                    completion_rate = (tasks_completed_same_day / len(tasks_arrived_today)) * 100
+                    daily_completion_rate_per_rep[d].append(completion_rate)
+                else:
+                    daily_completion_rate_per_rep[d].append(0.0)
+        
+        # Calculate mean and std across replications for each day
+        means = [np.mean(daily_completion_rate_per_rep[d]) if daily_completion_rate_per_rep[d] else 0 
+                for d in range(num_days)]
+        stds = [np.std(daily_completion_rate_per_rep[d]) if len(daily_completion_rate_per_rep[d]) > 1 else 0 
+               for d in range(num_days)]
+        
+        x = np.arange(1, num_days + 1)
+        
+        # Plot line for this role
+        ax.plot(x, means, color=colors.get(role, '#333333'), 
+               linewidth=2.5, marker='o', markersize=6, label=role, alpha=0.9)
+        
+        # Add confidence band
+        upper = [means[i] + stds[i] for i in range(num_days)]
+        lower = [max(0, means[i] - stds[i]) for i in range(num_days)]
+        ax.fill_between(x, lower, upper, color=colors.get(role, '#333333'), alpha=0.1)
     
     ax.set_xlabel('Operational Day', fontsize=11, fontweight='bold')
     ax.set_ylabel('Same-Day Completion Rate (%)', fontsize=11, fontweight='bold')
-    ax.set_title('Daily Same-Day Task Completion', fontsize=12, fontweight='bold')
+    ax.set_title('Daily Same-Day Task Completion by Role', fontsize=12, fontweight='bold')
     
     if num_days > 0:
         x_ticks = np.arange(1, num_days + 1)
         ax.set_xticks(x_ticks)
         ax.set_xticklabels([str(i) for i in x_ticks])
     
-    ax.legend(loc='best', fontsize=9, framealpha=0.9)
+    ax.legend(loc='best', fontsize=8, framealpha=0.9)
     ax.grid(True, alpha=0.3, linestyle=':')
     ax.set_ylim(0, 105)
     
     # Add reference line at 50%
-    ax.axhline(y=50, color='orange', linestyle='--', linewidth=1.5, alpha=0.5)
+    ax.axhline(y=50, color='gray', linestyle='--', linewidth=1, alpha=0.3)
     
     plt.tight_layout()
     return fig
