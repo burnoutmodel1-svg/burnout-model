@@ -1722,7 +1722,7 @@ def create_summary_table(all_metrics: List[Metrics], p: Dict, burnout_data: Dict
     
     # Add columns for each role
     for role in active_roles:
-        col_name = role.replace("Administrative staff", "Staff").replace("Doctors", "MDs")
+        col_name = role.replace("Administrative staff", "Staff").replace("Doctors", "Doctors")
         
         reroutes_mean = np.mean(reroutes_by_role[role])
         reroutes_std = np.std(reroutes_by_role[role], ddof=1) if len(reroutes_by_role[role]) > 1 else 0.0
@@ -1899,7 +1899,7 @@ if st.session_state.wizard_step == 1:
             cFD1, cFD2, cFD3 = st.columns(3)
             with cFD1:
                 fd_cap_form = st.number_input("Number working per day", 0, 50, _init_ss("fd_cap", 3), 1, "%d", key="fd_cap_input",
-                                               help="Number of Administrative staff staff")
+                                               help="Number of Administrative staff")
             with cFD2:
                 arr_fd = st.number_input("Volume", 0, 500, _init_ss("arr_fd", 4), 1, "%d", disabled=(fd_cap_form==0), key="arr_fd_input",
                              help="Average number of tasks per hour")
@@ -1935,7 +1935,7 @@ if st.session_state.wizard_step == 1:
             cBO1, cBO2, cBO3 = st.columns(3)
             with cBO1:
                 bo_cap_form = st.number_input("Number working per day", 0, 50, _init_ss("backoffice_cap", 2), 1, "%d", key="bo_cap_input",
-                                               help="Number of Other staff staff")
+                                               help="Number of Other staff")
             with cBO2:
                  arr_bo = st.number_input("Volume", 0, 500, _init_ss("arr_bo", 2), 1, "%d", disabled=(bo_cap_form==0), key="arr_bo_input",
                              help="Average number of tasks per hour")
