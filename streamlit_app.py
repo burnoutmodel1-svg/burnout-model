@@ -2287,7 +2287,7 @@ elif st.session_state.wizard_step == 2:
                  "**Interpretation:** Persistent high queues = bottlenecks.",
                  title="How is Queue Backlog Trend graph calculated?")
 
-    st.markdown("---")
+        st.markdown("---")
         
         # Add daily utilization graph
         col1, col2 = st.columns(2)
