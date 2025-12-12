@@ -59,7 +59,7 @@ def effective_open_minutes(sim_minutes, open_minutes):
 # =============================
 # Roles / constants
 # =============================
-ROLES = ["Administrative staff", "Nurse", "Doctors", "Other staff"]
+ROLES = ["Administrative staff", "Nurses", "Doctors", "Other staff"]
 DONE = "Done"
 
 # =============================
