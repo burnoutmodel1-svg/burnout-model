@@ -2191,7 +2191,7 @@ if st.session_state.wizard_step == 1:
             st.success("Configuration saved successfully")
 
     if st.session_state.design_saved:
-        if st.button("Run Simulation", type="primary", width=True):
+        if st.button("Run Simulation", type="primary", width="stretch"):
             st.session_state.wizard_step = 2
             st.rerun()
         
