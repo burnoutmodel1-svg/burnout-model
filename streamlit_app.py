@@ -2014,7 +2014,17 @@ if st.session_state.wizard_step == 1:
                     fd_loop_delay = st.slider("Delay to obtain", 0.0, 480.0, _init_ss("fd_loop_delay", 240.0), 0.5, disabled=(fd_cap_form==0), key="fd_delay")
             
                 st.markdown("**Disposition or routing Administrative staff**")
-                fd_route = route_row_ui("Administrative staff", {"Nurse": 0.50, "Doctors": 0.10, "Other staff": 0.10, DONE: 0.30}, 
+                fd_route_defaults = {
+                    "Nurse": float(st.session_state.get("saved_r_Administrative staff_to_nurse", 
+                                   st.session_state.get("r_Administrative staff_to_nurse", "0.50")).replace(",", ".")),
+                    "Doctors": float(st.session_state.get("saved_r_Administrative staff_to_doctors",
+                                     st.session_state.get("r_Administrative staff_to_doctors", "0.10")).replace(",", ".")),
+                    "Other staff": float(st.session_state.get("saved_r_Administrative staff_to_other_staff",
+                                         st.session_state.get("r_Administrative staff_to_other_staff", "0.10")).replace(",", ".")),
+                    DONE: float(st.session_state.get("saved_r_Administrative staff_done",
+                                st.session_state.get("r_Administrative staff_done", "0.30")).replace(",", "."))
+                }
+                fd_route = route_row_ui("Administrative staff", fd_route_defaults, 
                                    disabled_source=(fd_cap_form==0), fd_cap_val=fd_cap_form, nu_cap_val=nu_cap_form, 
                                    pr_cap_val=pr_cap_form, bo_cap_val=bo_cap_form)
         
@@ -2035,7 +2045,15 @@ if st.session_state.wizard_step == 1:
                     max_nurse_loops = st.number_input("Maximum number of loops", 0, 10, _init_ss("max_nurse_loops", 3), 1, "%d", disabled=(nu_cap_form==0), key="nu_max_loops")
             
                 st.markdown("**Disposition or routing Nurse**")
-                nu_route = route_row_ui("Nurse", {"Doctors": 0.40, "Other staff": 0.20, DONE: 0.40}, 
+                nu_route_defaults = {
+                    "Doctors": float(st.session_state.get("saved_r_Nurse_to_doctors",
+                                     st.session_state.get("r_Nurse_to_doctors", "0.40")).replace(",", ".")),
+                    "Other staff": float(st.session_state.get("saved_r_Nurse_to_other_staff",
+                                         st.session_state.get("r_Nurse_to_other_staff", "0.20")).replace(",", ".")),
+                    DONE: float(st.session_state.get("saved_r_Nurse_done",
+                                st.session_state.get("r_Nurse_done", "0.40")).replace(",", "."))
+                }
+                nu_route = route_row_ui("Nurse", nu_route_defaults, 
                                    disabled_source=(nu_cap_form==0), fd_cap_val=fd_cap_form, nu_cap_val=nu_cap_form, 
                                    pr_cap_val=pr_cap_form, bo_cap_val=bo_cap_form)
         
@@ -2053,7 +2071,13 @@ if st.session_state.wizard_step == 1:
                     provider_loop_delay = st.slider("Delay to obtain", 0.0, 480.0, _init_ss("provider_loop_delay", 300.0), 0.5, disabled=(pr_cap_form==0), key="pr_delay")
             
                 st.markdown("**Disposition or routing Doctors**")
-                pr_route = route_row_ui("Doctors", {"Other staff": 0.30, DONE: 0.70}, 
+                pr_route_defaults = {
+                    "Other staff": float(st.session_state.get("saved_r_Doctors_to_other_staff",
+                                         st.session_state.get("r_Doctors_to_other_staff", "0.30")).replace(",", ".")),
+                    DONE: float(st.session_state.get("saved_r_Doctors_done",
+                                st.session_state.get("r_Doctors_done", "0.70")).replace(",", "."))
+                }
+                pr_route = route_row_ui("Doctors", pr_route_defaults, 
                                    disabled_source=(pr_cap_form==0), fd_cap_val=fd_cap_form, nu_cap_val=nu_cap_form, 
                                    pr_cap_val=pr_cap_form, bo_cap_val=bo_cap_form)
         
@@ -2071,7 +2095,17 @@ if st.session_state.wizard_step == 1:
                     backoffice_loop_delay = st.slider("Delay to obtain", 0.0, 480.0, _init_ss("backoffice_loop_delay", 180.0), 0.5, disabled=(bo_cap_form==0), key="bo_delay")
             
                 st.markdown("**Disposition or routing Other staff**")
-                bo_route = route_row_ui("Other staff", {"Administrative staff": 0.10, "Nurse": 0.10, "Doctors": 0.10, DONE: 0.70}, 
+                bo_route_defaults = {
+                    "Administrative staff": float(st.session_state.get("saved_r_Other staff_to_administrative_staff",
+                                                  st.session_state.get("r_Other staff_to_administrative_staff", "0.10")).replace(",", ".")),
+                    "Nurse": float(st.session_state.get("saved_r_Other staff_to_nurse",
+                                   st.session_state.get("r_Other staff_to_nurse", "0.10")).replace(",", ".")),
+                    "Doctors": float(st.session_state.get("saved_r_Other staff_to_doctors",
+                                     st.session_state.get("r_Other staff_to_doctors", "0.10")).replace(",", ".")),
+                    DONE: float(st.session_state.get("saved_r_Other staff_done",
+                                st.session_state.get("r_Other staff_done", "0.70")).replace(",", "."))
+                }
+                bo_route = route_row_ui("Other staff", bo_route_defaults, 
                                    disabled_source=(bo_cap_form==0), fd_cap_val=fd_cap_form, nu_cap_val=nu_cap_form, 
                                    pr_cap_val=pr_cap_form, bo_cap_val=bo_cap_form)
         
