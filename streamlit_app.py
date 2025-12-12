@@ -1722,7 +1722,7 @@ def create_summary_table(all_metrics: List[Metrics], p: Dict, burnout_data: Dict
     
     # Add columns for each role
     for role in active_roles:
-        col_name = role.replace("Administrative staff", "Staff").replace("Doctors", "Doctors")
+        col_name = role.replace("Administrative staff", "Administrative staff").replace("Doctors", "Doctors")
         
         reroutes_mean = np.mean(reroutes_by_role[role])
         reroutes_std = np.std(reroutes_by_role[role], ddof=1) if len(reroutes_by_role[role]) > 1 else 0.0
