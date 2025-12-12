@@ -2089,25 +2089,25 @@ if st.session_state.wizard_step == 1:
             st.session_state.open_hours = open_hours
             st.session_state.cv_speed_label = cv_speed_label
             st.session_state.num_replications = num_replications
-    
+
             # Staff capacities
             st.session_state.fd_cap = fd_cap_form
             st.session_state.nurse_cap = nu_cap_form
             st.session_state.provider_cap = pr_cap_form
             st.session_state.backoffice_cap = bo_cap_form
-    
+
             # Arrivals
             st.session_state.arr_fd = arr_fd
             st.session_state.arr_nu = arr_nu
             st.session_state.arr_pr = arr_pr
             st.session_state.arr_bo = arr_bo
-    
+
             # Availability
             st.session_state.avail_fd = avail_fd
             st.session_state.avail_nu = avail_nu
             st.session_state.avail_pr = avail_pr
             st.session_state.avail_bo = avail_bo
-            
+    
             # Burnout weights
             st.session_state.w_utilization = w_utilization
             st.session_state.w_availability_stress = w_availability_stress
@@ -2123,25 +2123,52 @@ if st.session_state.wizard_step == 1:
             st.session_state.p_protocol = p_protocol
             st.session_state.svc_provider = svc_provider
             st.session_state.svc_backoffice = svc_backoffice
-    
+
             # Loop parameters - Front desk
             st.session_state.p_fd_insuff = p_fd_insuff
             st.session_state.max_fd_loops = max_fd_loops
             st.session_state.fd_loop_delay = fd_loop_delay
-    
+
             # Loop parameters - Nurse
             st.session_state.p_nurse_insuff = p_nurse_insuff
             st.session_state.max_nurse_loops = max_nurse_loops
-        
+    
             # Loop parameters - Provider
             st.session_state.p_provider_insuff = p_provider_insuff
             st.session_state.max_provider_loops = max_provider_loops
             st.session_state.provider_loop_delay = provider_loop_delay
-    
+
             # Loop parameters - Back office
             st.session_state.p_backoffice_insuff = p_backoffice_insuff
             st.session_state.max_backoffice_loops = max_backoffice_loops
             st.session_state.backoffice_loop_delay = backoffice_loop_delay
+    
+            # NEW: Save routing values explicitly
+            # Administrative staff routing
+            for target in ["nurse", "doctors", "other_staff", "done"]:
+                key = f"r_Administrative staff_to_{target}" if target != "done" else "r_Administrative staff_done"
+                if key in st.session_state:
+                    st.session_state[f"saved_{key}"] = st.session_state[key]
+    
+            # Nurse routing
+            for target in ["doctors", "other_staff", "done"]:
+                key = f"r_Nurse_to_{target}" if target != "done" else "r_Nurse_done"
+                if key in st.session_state:
+                    st.session_state[f"saved_{key}"] = st.session_state[key]
+    
+            # Doctors routing
+            for target in ["other_staff", "done"]:
+                key = f"r_Doctors_to_{target}" if target != "done" else "r_Doctors_done"
+                if key in st.session_state:
+                    st.session_state[f"saved_{key}"] = st.session_state[key]
+    
+            # Other staff routing
+            for target in ["administrative_staff", "nurse", "doctors", "done"]:
+                key = f"r_Other staff_to_{target}" if target != "done" else "r_Other staff_done"
+                if key in st.session_state:
+                    st.session_state[f"saved_{key}"] = st.session_state[key]
+        
+            # ... rest of the save logic ...
     
             # Calculate derived values
             open_minutes = int(open_hours * MIN_PER_HOUR)
