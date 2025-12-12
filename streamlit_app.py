@@ -2191,7 +2191,7 @@ if st.session_state.wizard_step == 1:
             st.success("Configuration saved successfully")
 
     if st.session_state.design_saved:
-        if st.button("Run Simulation", type="primary", use_container_width=True):
+        if st.button("Run Simulation", type="primary", width=True):
             st.session_state.wizard_step = 2
             st.rerun()
         
@@ -2255,7 +2255,7 @@ elif st.session_state.wizard_step == 2:
     # Summary Table
     st.markdown("### Summary Table")
     summary_df = create_summary_table(all_metrics, p, burnout_data, active_roles)
-    st.dataframe(summary_df, use_container_width=True, hide_index=True)
+    st.dataframe(summary_df, width="stretch", hide_index=True)
 
     # System Performance - Collapsible
     with st.expander("System Performance", expanded=False):
@@ -2264,12 +2264,12 @@ elif st.session_state.wizard_step == 2:
         col1, col2 = st.columns(2)
         with col1:
             fig_throughput = plot_daily_throughput(all_metrics, p, active_roles)
-            st.pyplot(fig_throughput, use_container_width=False)
+            st.pyplot(fig_throughput)
             plt.close(fig_throughput)
         
         with col2:
             fig_queue = plot_queue_over_time(all_metrics, p, active_roles)
-            st.pyplot(fig_queue, use_container_width=False)
+            st.pyplot(fig_queue)
             plt.close(fig_queue)
         
         col1, col2 = st.columns(2)
@@ -2289,7 +2289,7 @@ elif st.session_state.wizard_step == 2:
         col1, col2 = st.columns(2)
         with col1:
             fig_daily_util = plot_daily_utilization(all_metrics, p, active_roles)
-            st.pyplot(fig_daily_util, use_container_width=False)
+            st.pyplot(fig_daily_util)
             plt.close(fig_daily_util)
         
         with col2:
@@ -2313,12 +2313,12 @@ elif st.session_state.wizard_step == 2:
         col1, col2 = st.columns(2)
         with col1:
             fig_response_dist = plot_response_time_distribution(all_metrics, p)
-            st.pyplot(fig_response_dist, use_container_width=False)
+            st.pyplot(fig_response_dist)
             plt.close(fig_response_dist)
         
         with col2:
             fig_completion_days = plot_completion_by_day(all_metrics, p)
-            st.pyplot(fig_completion_days, use_container_width=False)
+            st.pyplot(fig_completion_days)
             plt.close(fig_completion_days)
         
         col1, col2 = st.columns(2)
@@ -2344,7 +2344,7 @@ elif st.session_state.wizard_step == 2:
         col1, col2 = st.columns(2)
         with col1:
             fig_daily_completion = plot_daily_completion_rate(all_metrics, p, active_roles)
-            st.pyplot(fig_daily_completion, use_container_width=False)
+            st.pyplot(fig_daily_completion)
             plt.close(fig_daily_completion)
         
         with col2:
@@ -2368,12 +2368,12 @@ elif st.session_state.wizard_step == 2:
         col1, col2 = st.columns(2)
         with col1:
             fig_daily_workload = plot_daily_workload(all_metrics, p, active_roles)
-            st.pyplot(fig_daily_workload, use_container_width=False)
+            st.pyplot(fig_daily_workload)
             plt.close(fig_daily_workload)
         
         with col2:
             fig_burnout_days = plot_burnout_over_days(all_metrics, p, active_roles)
-            st.pyplot(fig_burnout_days, use_container_width=False)
+            st.pyplot(fig_burnout_days)
             plt.close(fig_burnout_days)
         
         col1, col2 = st.columns(2)
@@ -2397,12 +2397,12 @@ elif st.session_state.wizard_step == 2:
         col1, col2 = st.columns(2)
         with col1:
             fig_rerouting = plot_rerouting_by_day(all_metrics, p, active_roles)
-            st.pyplot(fig_rerouting, use_container_width=False)
+            st.pyplot(fig_rerouting)
             plt.close(fig_rerouting)
         
         with col2:
             fig_missing_info = plot_missing_info_by_day(all_metrics, p, active_roles)
-            st.pyplot(fig_missing_info, use_container_width=False)
+            st.pyplot(fig_missing_info)
             plt.close(fig_missing_info)
         
         col1, col2 = st.columns(2)
@@ -2427,7 +2427,7 @@ elif st.session_state.wizard_step == 2:
         col1, col2 = st.columns(2)
         with col1:
             fig_overtime = plot_overtime_needed(all_metrics, p, active_roles)
-            st.pyplot(fig_overtime, use_container_width=False)
+            st.pyplot(fig_overtime)
             plt.close(fig_overtime)
         
         with col2:
@@ -2459,5 +2459,5 @@ elif st.session_state.wizard_step == 2:
             data=excel_file,
             file_name=f"CHC_Event_Log_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            use_container_width=True
+            width="stretch"
         )
