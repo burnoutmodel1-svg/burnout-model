@@ -780,7 +780,7 @@ def plot_daily_throughput(all_metrics: List[Metrics], p: Dict, active_roles: Lis
     
 def plot_response_time_distribution(all_metrics: List[Metrics], p: Dict):
     """
-    Line graph showing distribution of task completion times in 3-hour bins up to 48 hours.
+    Histogram showing distribution of task completion times in 3-hour bins up to 48 hours.
     """
     fig, ax = plt.subplots(figsize=(8, 4), dpi=100)
     
@@ -809,25 +809,30 @@ def plot_response_time_distribution(all_metrics: List[Metrics], p: Dict):
     mean_counts = np.mean(bin_counts_array, axis=0)
     std_counts = np.std(bin_counts_array, axis=0)
     
-    # Create x-axis positions (center of each bin)
-    bin_centers = (bin_edges_hours[:-1] + bin_edges_hours[1:]) / 2
+    # Create x-axis positions (left edge of each bin)
+    bin_left_edges = bin_edges_hours[:-1]
+    bin_width = 3  # Each bin is 3 hours wide
     
-    # Plot line with markers
-    ax.plot(bin_centers, mean_counts, color='#1f77b4', linewidth=2.5, 
-            marker='o', markersize=6, label='Mean Task Count', alpha=0.9)
+    # Create histogram bars
+    bars = ax.bar(bin_left_edges, mean_counts, width=bin_width, 
+                  align='edge', color='#1f77b4', alpha=0.7, 
+                  edgecolor='black', linewidth=0.5)
     
-    # Add confidence band (±1 SD)
-    upper_bound = mean_counts + std_counts
-    lower_bound = np.maximum(0, mean_counts - std_counts)
-    ax.fill_between(bin_centers, lower_bound, upper_bound, color='#1f77b4', alpha=0.15)
+    # Add error bars at the center of each bar
+    bin_centers = bin_left_edges + bin_width / 2
+    ax.errorbar(bin_centers, mean_counts, yerr=std_counts, 
+                fmt='none', ecolor='black', capsize=3, alpha=0.6, linewidth=1)
     
     ax.set_xlabel('Hours', fontsize=11, fontweight='bold')
     ax.set_ylabel('Number of Tasks', fontsize=11, fontweight='bold')
     ax.set_title('Distribution of Task Completion Times', fontsize=12, fontweight='bold')
     ax.set_xlim(0, 48)
     ax.set_ylim(bottom=0)
-    ax.legend(loc='best', fontsize=9, framealpha=0.9)
-    ax.grid(True, alpha=0.3, linestyle=':')
+    
+    # Set x-axis ticks to show every 6 hours
+    ax.set_xticks(np.arange(0, 49, 6))
+    
+    ax.grid(True, alpha=0.3, linestyle=':', axis='y')
     
     plt.tight_layout()
     return fig
