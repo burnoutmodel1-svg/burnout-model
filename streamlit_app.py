@@ -59,7 +59,7 @@ def effective_open_minutes(sim_minutes, open_minutes):
 # =============================
 # Roles / constants
 # =============================
-ROLES = ["Administrative staff", "Nurses", "Doctors", "Other staff"]
+ROLES = ["Administrative staff", "nursess", "Doctors", "Other staff"]
 DONE = "Done"
 
 # =============================
@@ -76,7 +76,7 @@ class Metrics:
         self.arrivals_by_role = {r: 0 for r in ROLES}
         self.service_time_sum = {r: 0.0 for r in ROLES}
         self.loop_fd_insufficient = 0
-        self.loop_nurse_insufficient = 0
+        self.loop_nurses_insufficient = 0
         self.loop_provider_insufficient = 0
         self.loop_backoffice_insufficient = 0
         self.events = []
@@ -92,9 +92,9 @@ class Metrics:
 STEP_LABELS = {
     "ARRIVE": "Task arrived", "FD_QUEUE": "Administrative staff: queued", "FD_DONE": "Administrative staff: completed",
     "FD_INSUFF": "Administrative staff: missing info", "FD_RETRY_QUEUE": "Administrative staff: re-queued (info)",
-    "FD_RETRY_DONE": "Administrative staff: re-done (info)", "NU_QUEUE": "Nurse: queued", "NU_DONE": "Nurse: completed",
-    "NU_INSUFF": "Nurse: missing info", "NU_RECHECK_QUEUE": "Nurse: re-check queued",
-    "NU_RECHECK_DONE": "Nurse: re-check completed", "PR_QUEUE": "Doctors: queued", "PR_DONE": "Doctors: completed",
+    "FD_RETRY_DONE": "Administrative staff: re-done (info)", "NU_QUEUE": "nurses: queued", "NU_DONE": "nurses: completed",
+    "NU_INSUFF": "nurses: missing info", "NU_RECHECK_QUEUE": "nurses: re-check queued",
+    "NU_RECHECK_DONE": "nurses: re-check completed", "PR_QUEUE": "Doctors: queued", "PR_DONE": "Doctors: completed",
     "PR_INSUFF": "Doctors: rework needed", "PR_RECHECK_QUEUE": "Doctors: recheck queued",
     "PR_RECHECK_DONE": "Doctors: recheck done", "BO_QUEUE": "Other staff: queued", "BO_DONE": "Other staff: completed",
     "BO_INSUFF": "Other staff: rework needed", "BO_RECHECK_QUEUE": "Other staff: recheck queued",
@@ -160,21 +160,21 @@ class CHCSystem:
         self.m = metrics
 
         self.fd_cap = params["frontdesk_cap"]
-        self.nu_cap = params["nurse_cap"]
+        self.nu_cap = params["nurses_cap"]
         self.pr_cap = params["provider_cap"]
         self.bo_cap = params["backoffice_cap"]
 
         self.frontdesk = simpy.Resource(env, capacity=self.fd_cap) if self.fd_cap > 0 else None
-        self.nurse = simpy.Resource(env, capacity=self.nu_cap) if self.nu_cap > 0 else None
+        self.nurses = simpy.Resource(env, capacity=self.nu_cap) if self.nu_cap > 0 else None
         self.provider = simpy.Resource(env, capacity=self.pr_cap) if self.pr_cap > 0 else None
         self.backoffice = simpy.Resource(env, capacity=self.bo_cap) if self.bo_cap > 0 else None
 
         self.role_to_res = {
-            "Administrative staff": self.frontdesk, "Nurse": self.nurse,
+            "Administrative staff": self.frontdesk, "nurses": self.nurses,
             "Doctors": self.provider, "Other staff": self.backoffice
         }
         
-        avail_params = params.get("availability_per_day", {"Administrative staff": 480, "Nurse": 480, "Doctors": 480, "Other staff": 480})        
+        avail_params = params.get("availability_per_day", {"Administrative staff": 480, "nurses": 480, "Doctors": 480, "Other staff": 480})        
         self.availability = {
             role: generate_availability_schedule(params["sim_minutes"], role, avail_params.get(role, 60), seed_offset)
             for role in ROLES
@@ -276,26 +276,26 @@ def handle_role(env, task_id, s: CHCSystem, role: str):
                 yield from s.scheduled_service(res, "Administrative staff", s.p["svc_frontdesk"])
                 s.m.log(env.now, task_id, "FD_RETRY_DONE", f"Loop #{fd_loops}")
 
-    elif role == "Nurse":
+    elif role == "nurses":
         if res is not None:
             s.m.log(env.now, task_id, "NU_QUEUE", "")
             if random.random() < s.p["p_protocol"]:
-                yield from s.scheduled_service(res, "Nurse", s.p["svc_nurse_protocol"], role_for_dist="NurseProtocol")
+                yield from s.scheduled_service(res, "nurses", s.p["svc_nurses_protocol"], role_for_dist="nursesProtocol")
             else:
-                yield from s.scheduled_service(res, "Nurse", s.p["svc_nurse"])
+                yield from s.scheduled_service(res, "nurses", s.p["svc_nurses"])
                 s.m.log(env.now, task_id, "NU_DONE", "")
-            nurse_loops = 0
-            while (nurse_loops < s.p["max_nurse_loops"]) and (random.random() < s.p["p_nurse_insuff"]):
-                nurse_loops += 1
-                s.m.loop_nurse_insufficient += 1
-                s.m.log(env.now, task_id, "NU_INSUFF", f"Back to FD loop #{nurse_loops}")
+            nurses_loops = 0
+            while (nurses_loops < s.p["max_nurses_loops"]) and (random.random() < s.p["p_nurses_insuff"]):
+                nurses_loops += 1
+                s.m.loop_nurses_insufficient += 1
+                s.m.log(env.now, task_id, "NU_INSUFF", f"Back to FD loop #{nurses_loops}")
                 if s.role_to_res["Administrative staff"] is not None:
-                    s.m.log(env.now, task_id, "FD_QUEUE", f"After nurse loop #{nurse_loops}")
+                    s.m.log(env.now, task_id, "FD_QUEUE", f"After nurses loop #{nurses_loops}")
                     yield from s.scheduled_service(s.role_to_res["Administrative staff"], "Administrative staff", s.p["svc_frontdesk"])
-                    s.m.log(env.now, task_id, "FD_DONE", f"After nurse loop #{nurse_loops}")
-                s.m.log(env.now, task_id, "NU_RECHECK_QUEUE", f"Loop #{nurse_loops}")
-                yield from s.scheduled_service(res, "Nurse", max(0.0, 0.5 * s.p["svc_nurse"]))
-                s.m.log(env.now, task_id, "NU_RECHECK_DONE", f"Loop #{nurse_loops}")
+                    s.m.log(env.now, task_id, "FD_DONE", f"After nurses loop #{nurses_loops}")
+                s.m.log(env.now, task_id, "NU_RECHECK_QUEUE", f"Loop #{nurses_loops}")
+                yield from s.scheduled_service(res, "nurses", max(0.0, 0.5 * s.p["svc_nurses"]))
+                s.m.log(env.now, task_id, "NU_RECHECK_DONE", f"Loop #{nurses_loops}")
 
     elif role == "Doctors":
         if res is not None:
@@ -451,7 +451,7 @@ def calculate_burnout(all_metrics: List[Metrics], p: Dict, active_roles: List[st
     for role in active_roles:
         capacity = {
             "Administrative staff": p["frontdesk_cap"],
-            "Nurse": p["nurse_cap"],
+            "nurses": p["nurses_cap"],
             "Doctors": p["provider_cap"],
             "Other staff": p["backoffice_cap"]
         }[role]
@@ -476,14 +476,14 @@ def calculate_burnout(all_metrics: List[Metrics], p: Dict, active_roles: List[st
             # ReworkPct (0–1)
             loop_counts = {
                 "Administrative staff": metrics.loop_fd_insufficient,
-                "Nurse": metrics.loop_nurse_insufficient,
+                "nurses": metrics.loop_nurses_insufficient,
                 "Doctors": metrics.loop_provider_insufficient,
                 "Other staff": metrics.loop_backoffice_insufficient
             }
             loops = loop_counts.get(role, 0)
             svc_time = {
                 "Administrative staff": p["svc_frontdesk"],
-                "Nurse": p["svc_nurse"],
+                "nurses": p["svc_nurses"],
                 "Doctors": p["svc_provider"],
                 "Other staff": p["svc_backoffice"]
             }[role]
@@ -578,7 +578,7 @@ def plot_daily_utilization(all_metrics: List[Metrics], p: Dict, active_roles: Li
     This directly corresponds to the utilization burnout component.
     """
     fig, ax = plt.subplots(figsize=(8, 4), dpi=100)
-    colors = {'Administrative staff': '#1f77b4', 'Nurse': '#ff7f0e', 'Doctors': '#2ca02c', 'Other staff': '#d62728'}
+    colors = {'Administrative staff': '#1f77b4', 'nurses': '#ff7f0e', 'Doctors': '#2ca02c', 'Other staff': '#d62728'}
     
     num_days = max(1, int(p["sim_minutes"] // DAY_MIN))
     open_minutes_per_day = p["open_minutes"]
@@ -588,7 +588,7 @@ def plot_daily_utilization(all_metrics: List[Metrics], p: Dict, active_roles: Li
         
         capacity = {
             "Administrative staff": p["frontdesk_cap"],
-            "Nurse": p["nurse_cap"],
+            "nurses": p["nurses_cap"],
             "Doctors": p["provider_cap"],
             "Other staff": p["backoffice_cap"]
         }[role]
@@ -600,7 +600,7 @@ def plot_daily_utilization(all_metrics: List[Metrics], p: Dict, active_roles: Li
         
         role_queue_step = {
             "Administrative staff": "FD_QUEUE",
-            "Nurse": "NU_QUEUE",
+            "nurses": "NU_QUEUE",
             "Doctors": "PR_QUEUE",
             "Other staff": "BO_QUEUE"
         }
@@ -608,7 +608,7 @@ def plot_daily_utilization(all_metrics: List[Metrics], p: Dict, active_roles: Li
         
         avg_service_time = {
             "Administrative staff": p.get("svc_frontdesk", 10),
-            "Nurse": p.get("svc_nurse", 15),
+            "nurses": p.get("svc_nurses", 15),
             "Doctors": p.get("svc_provider", 20),
             "Other staff": p.get("svc_backoffice", 12)
         }.get(role, 10)
@@ -664,7 +664,7 @@ def plot_daily_utilization(all_metrics: List[Metrics], p: Dict, active_roles: Li
     
 def plot_queue_over_time(all_metrics: List[Metrics], p: Dict, active_roles: List[str]):
     fig, ax = plt.subplots(figsize=(8, 4), dpi=100)
-    colors = {'Administrative staff': '#1f77b4', 'Nurse': '#ff7f0e', 'Doctors': '#2ca02c', 'Other staff': '#d62728'}
+    colors = {'Administrative staff': '#1f77b4', 'nurses': '#ff7f0e', 'Doctors': '#2ca02c', 'Other staff': '#d62728'}
     
     num_days = max(1, int(p["sim_minutes"] // DAY_MIN))
     open_minutes = p["open_minutes"]
@@ -720,7 +720,7 @@ def plot_daily_throughput(all_metrics: List[Metrics], p: Dict, active_roles: Lis
     Line graph showing daily throughput (tasks completed) by role over time with SD shading.
     """
     fig, ax = plt.subplots(figsize=(8, 4), dpi=100)
-    colors = {'Administrative staff': '#1f77b4', 'Nurse': '#ff7f0e', 'Doctors': '#2ca02c', 'Other staff': '#d62728'}
+    colors = {'Administrative staff': '#1f77b4', 'nurses': '#ff7f0e', 'Doctors': '#2ca02c', 'Other staff': '#d62728'}
     
     num_days = max(1, int(p["sim_minutes"] // DAY_MIN))
     open_minutes = p["open_minutes"]
@@ -731,7 +731,7 @@ def plot_daily_throughput(all_metrics: List[Metrics], p: Dict, active_roles: Lis
         # Role prefix mapping
         role_prefix_map = {
             "Administrative staff": "AD",
-            "Nurse": "NU",
+            "nurses": "NU",
             "Doctors": "DO",
             "Other staff": "OT"
         }
@@ -911,7 +911,7 @@ def plot_daily_completion_rate(all_metrics: List[Metrics], p: Dict, active_roles
     Incompletion burnout = 100 - completion rate shown here.
     """
     fig, ax = plt.subplots(figsize=(8, 4), dpi=100)
-    colors = {'Administrative staff': '#1f77b4', 'Nurse': '#ff7f0e', 'Doctors': '#2ca02c', 'Other staff': '#d62728'}
+    colors = {'Administrative staff': '#1f77b4', 'nurses': '#ff7f0e', 'Doctors': '#2ca02c', 'Other staff': '#d62728'}
     
     num_days = max(1, int(p["sim_minutes"] // DAY_MIN))
     open_minutes_per_day = p["open_minutes"]
@@ -922,7 +922,7 @@ def plot_daily_completion_rate(all_metrics: List[Metrics], p: Dict, active_roles
         # Determine which tasks belong to this role (by prefix)
         role_prefix_map = {
             "Administrative staff": "AD",
-            "Nurse": "NU",
+            "nurses": "NU",
             "Doctors": "DO",
             "Other staff": "OT"
         }
@@ -987,7 +987,7 @@ def plot_daily_workload(all_metrics: List[Metrics], p: Dict, active_roles: List[
     Line graph showing daily task arrivals by role with utilization-based burnout thresholds.
     """
     fig, ax = plt.subplots(figsize=(8, 4), dpi=100)
-    colors = {'Administrative staff': '#1f77b4', 'Nurse': '#ff7f0e', 'Doctors': '#2ca02c', 'Other staff': '#d62728'}
+    colors = {'Administrative staff': '#1f77b4', 'nurses': '#ff7f0e', 'Doctors': '#2ca02c', 'Other staff': '#d62728'}
     
     num_days = max(1, int(p["sim_minutes"] // DAY_MIN))
     
@@ -1051,7 +1051,7 @@ def plot_burnout_over_days(all_metrics: List[Metrics], p: Dict, active_roles: Li
     Each day's burnout is calculated based ONLY on that day's activity.
     """
     fig, ax = plt.subplots(figsize=(8, 4), dpi=100)
-    colors = {'Administrative staff': '#1f77b4', 'Nurse': '#ff7f0e', 'Doctors': '#2ca02c', 'Other staff': '#d62728'}
+    colors = {'Administrative staff': '#1f77b4', 'nurses': '#ff7f0e', 'Doctors': '#2ca02c', 'Other staff': '#d62728'}
     
     num_days = max(1, int(p["sim_minutes"] // DAY_MIN))
     open_minutes_per_day = p["open_minutes"]
@@ -1074,7 +1074,7 @@ def plot_burnout_over_days(all_metrics: List[Metrics], p: Dict, active_roles: Li
         
         capacity = {
             "Administrative staff": p["frontdesk_cap"],
-            "Nurse": p["nurse_cap"],
+            "nurses": p["nurses_cap"],
             "Doctors": p["provider_cap"],
             "Other staff": p["backoffice_cap"]
         }[role]
@@ -1087,7 +1087,7 @@ def plot_burnout_over_days(all_metrics: List[Metrics], p: Dict, active_roles: Li
         # Map role to INSUFF step code
         loop_step_map = {
             "Administrative staff": "FD_INSUFF",
-            "Nurse": "NU_INSUFF",
+            "nurses": "NU_INSUFF",
             "Doctors": "PR_INSUFF",
             "Other staff": "BO_INSUFF"
         }
@@ -1103,7 +1103,7 @@ def plot_burnout_over_days(all_metrics: List[Metrics], p: Dict, active_roles: Li
                 # Count tasks that were SERVED by this role today (queued today)
                 role_queue_step = {
                     "Administrative staff": "FD_QUEUE",
-                    "Nurse": "NU_QUEUE",
+                    "nurses": "NU_QUEUE",
                     "Doctors": "PR_QUEUE",
                     "Other staff": "BO_QUEUE"
                 }
@@ -1117,7 +1117,7 @@ def plot_burnout_over_days(all_metrics: List[Metrics], p: Dict, active_roles: Li
                 # Get average service time for this role
                 avg_service_time = {
                     "Administrative staff": p.get("svc_frontdesk", 10),
-                    "Nurse": p.get("svc_nurse", 15),
+                    "nurses": p.get("svc_nurses", 15),
                     "Doctors": p.get("svc_provider", 20),
                     "Other staff": p.get("svc_backoffice", 12)
                 }.get(role, 10)
@@ -1147,7 +1147,7 @@ def plot_burnout_over_days(all_metrics: List[Metrics], p: Dict, active_roles: Li
                 # 4. INCOMPLETION - tasks that arrived at THIS ROLE today but didn't finish today
                 role_step_map = {
                     "Administrative staff": "FD_QUEUE",
-                    "Nurse": "NU_QUEUE", 
+                    "nurses": "NU_QUEUE", 
                     "Doctors": "PR_QUEUE",
                     "Other staff": "BO_QUEUE"
                 }
@@ -1172,7 +1172,7 @@ def plot_burnout_over_days(all_metrics: List[Metrics], p: Dict, active_roles: Li
                 # Map role to task prefix
                 role_prefix_map = {
                     "Administrative staff": "AD",
-                    "Nurse": "NU",
+                    "nurses": "NU",
                     "Doctors": "DO",
                     "Other staff": "OT"
                 }
@@ -1245,7 +1245,7 @@ def plot_rerouting_by_day(all_metrics: List[Metrics], p: Dict, active_roles: Lis
     Line graph showing daily reroutes (inappropriate receipt) by role.
     """
     fig, ax = plt.subplots(figsize=(8, 4), dpi=100)
-    colors = {'Administrative staff': '#1f77b4', 'Nurse': '#ff7f0e', 'Doctors': '#2ca02c', 'Other staff': '#d62728'}
+    colors = {'Administrative staff': '#1f77b4', 'nurses': '#ff7f0e', 'Doctors': '#2ca02c', 'Other staff': '#d62728'}
     
     num_days = max(1, int(p["sim_minutes"] // DAY_MIN))
     
@@ -1265,7 +1265,7 @@ def plot_rerouting_by_day(all_metrics: List[Metrics], p: Dict, active_roles: Lis
                         # Determine which role this queue belongs to
                         step_to_role = {
                             "FD_QUEUE": "Administrative staff",
-                            "NU_QUEUE": "Nurse",
+                            "NU_QUEUE": "nurses",
                             "PR_QUEUE": "Doctors",
                             "BO_QUEUE": "Other staff"
                         }
@@ -1276,7 +1276,7 @@ def plot_rerouting_by_day(all_metrics: List[Metrics], p: Dict, active_roles: Lis
                         if name.startswith("AD"):
                             initial_role = "Administrative staff"
                         elif name.startswith("NU"):
-                            initial_role = "Nurse"
+                            initial_role = "nurses"
                         elif name.startswith("DO"):
                             initial_role = "Doctors"
                         elif name.startswith("OT"):
@@ -1325,7 +1325,7 @@ def plot_missing_info_by_day(all_metrics: List[Metrics], p: Dict, active_roles: 
     Line graph showing daily missing info callbacks by role.
     """
     fig, ax = plt.subplots(figsize=(8, 4), dpi=100)
-    colors = {'Administrative staff': '#1f77b4', 'Nurse': '#ff7f0e', 'Doctors': '#2ca02c', 'Other staff': '#d62728'}
+    colors = {'Administrative staff': '#1f77b4', 'nurses': '#ff7f0e', 'Doctors': '#2ca02c', 'Other staff': '#d62728'}
     
     num_days = max(1, int(p["sim_minutes"] // DAY_MIN))
     
@@ -1342,7 +1342,7 @@ def plot_missing_info_by_day(all_metrics: List[Metrics], p: Dict, active_roles: 
                     # Missing info events are INSUFF steps
                     step_to_role = {
                         "FD_INSUFF": "Administrative staff",
-                        "NU_INSUFF": "Nurse",
+                        "NU_INSUFF": "nurses",
                         "PR_INSUFF": "Doctors",
                         "BO_INSUFF": "Other staff"
                     }
@@ -1398,7 +1398,7 @@ def plot_overtime_needed(all_metrics: List[Metrics], p: Dict, active_roles: List
         for role in active_roles:
             capacity = {
                 "Administrative staff": p["frontdesk_cap"],
-                "Nurse": p["nurse_cap"],
+                "nurses": p["nurses_cap"],
                 "Doctors": p["provider_cap"],
                 "Other staff": p["backoffice_cap"]
             }[role]
@@ -1533,7 +1533,7 @@ def aggregate_replications(p: Dict, all_metrics: List[Metrics], active_roles: Li
     ])
     
     rework_pct_list = []
-    loop_counts_lists = {"Administrative staff": [], "Nurse": [], "Doctors": [], "Other staff": []}
+    loop_counts_lists = {"Administrative staff": [], "nurses": [], "Doctors": [], "Other staff": []}
     
     for metrics in all_metrics:
         rework_tasks = set()
@@ -1545,7 +1545,7 @@ def aggregate_replications(p: Dict, all_metrics: List[Metrics], active_roles: Li
         rework_pct_list.append(100.0 * len(rework_tasks & done_ids) / max(1, len(done_ids)))
         
         loop_counts_lists["Administrative staff"].append(metrics.loop_fd_insufficient)
-        loop_counts_lists["Nurse"].append(metrics.loop_nurse_insufficient)
+        loop_counts_lists["nurses"].append(metrics.loop_nurses_insufficient)
         loop_counts_lists["Doctors"].append(metrics.loop_provider_insufficient)
         loop_counts_lists["Other staff"].append(metrics.loop_backoffice_insufficient)
     
@@ -1601,7 +1601,7 @@ def aggregate_replications(p: Dict, all_metrics: List[Metrics], active_roles: Li
     open_time_available = effective_open_minutes(p["sim_minutes"], p["open_minutes"])
     denom = {
         "Administrative staff": max(1, p["frontdesk_cap"]) * open_time_available,
-        "Nurse": max(1, p["nurse_cap"]) * open_time_available,
+        "nurses": max(1, p["nurses_cap"]) * open_time_available,
         "Doctors": max(1, p["provider_cap"]) * open_time_available,
         "Other staff": max(1, p["backoffice_cap"]) * open_time_available,
     }
@@ -1647,7 +1647,7 @@ def create_summary_table(all_metrics: List[Metrics], p: Dict, burnout_data: Dict
         for t, name, step, note, _arr in metrics.events:
             step_to_role = {
                 "FD_INSUFF": "Administrative staff",
-                "NU_INSUFF": "Nurse",
+                "NU_INSUFF": "nurses",
                 "PR_INSUFF": "Doctors",
                 "BO_INSUFF": "Other staff"
             }
@@ -1667,7 +1667,7 @@ def create_summary_table(all_metrics: List[Metrics], p: Dict, burnout_data: Dict
             if step in ["FD_QUEUE", "NU_QUEUE", "PR_QUEUE", "BO_QUEUE"]:
                 step_to_role = {
                     "FD_QUEUE": "Administrative staff",
-                    "NU_QUEUE": "Nurse",
+                    "NU_QUEUE": "nurses",
                     "PR_QUEUE": "Doctors",
                     "BO_QUEUE": "Other staff"
                 }
@@ -1678,7 +1678,7 @@ def create_summary_table(all_metrics: List[Metrics], p: Dict, burnout_data: Dict
                 if name.startswith("AD"):
                     initial_role = "Administrative staff"
                 elif name.startswith("NU"):
-                    initial_role = "Nurse"
+                    initial_role = "nurses"
                 elif name.startswith("DO"):
                     initial_role = "Doctors"
                 elif name.startswith("OT"):
@@ -1700,7 +1700,7 @@ def create_summary_table(all_metrics: List[Metrics], p: Dict, burnout_data: Dict
         for role in active_roles:
             capacity = {
                 "Administrative staff": p["frontdesk_cap"],
-                "Nurse": p["nurse_cap"],
+                "nurses": p["nurses_cap"],
                 "Doctors": p["provider_cap"],
                 "Other staff": p["backoffice_cap"]
             }[role]
@@ -1842,7 +1842,7 @@ if st.session_state.wizard_step == 1:
         associated burnout and to help evaluate potential process improvements and interventions.
         
         **How tool works:**
-        - Patient-initiated paperwork, calls, or postal messages are received by various staff (nurses, Doctors, staff)
+        - Patient-initiated paperwork, calls, or postal messages are received by various staff (nursess, Doctors, staff)
         - Staff process these based on availability and Processing times
         - Items received by the wrong type of personnel are routed appropriately
         The model tracks daily workload, inefficiency, response delays, and contribution to burnout for each type of role
@@ -1865,7 +1865,7 @@ if st.session_state.wizard_step == 1:
     
     def route_row_ui(from_role: str, defaults: Dict[str, float], disabled_source: bool = False, 
                      fd_cap_val: int = 0, nu_cap_val: int = 0, pr_cap_val: int = 0, bo_cap_val: int = 0) -> Dict[str, float]:
-        current_cap_map = {"Administrative staff": fd_cap_val, "Nurse": nu_cap_val, "Doctors": pr_cap_val, "Other staff": bo_cap_val}
+        current_cap_map = {"Administrative staff": fd_cap_val, "nurses": nu_cap_val, "Doctors": pr_cap_val, "Other staff": bo_cap_val}
         st.markdown(f"**{from_role} →**")
         targets = [r for r in ROLES if r != from_role] + [DONE]
         cols = st.columns(len(targets))
@@ -1907,11 +1907,11 @@ if st.session_state.wizard_step == 1:
                 avail_fd = st.number_input("Availability (min/day)", 0, 480, _init_ss("avail_fd", 240), 1, "%d", disabled=(fd_cap_form==0), key="avail_fd_input",
                                help="Minutes per day available for work (max = hours open × 60)")
 
-        with st.expander("Nurses", expanded=False):
+        with st.expander("nursess", expanded=False):
             cNU1, cNU2, cNU3 = st.columns(3)
             with cNU1:
-                nu_cap_form = st.number_input("Number working per day", 0, 50, _init_ss("nurse_cap", 3), 1, "%d", key="nurse_cap_input",
-                                                  help="Number of nurses or medical assistants")
+                nu_cap_form = st.number_input("Number working per day", 0, 50, _init_ss("nurses_cap", 3), 1, "%d", key="nurses_cap_input",
+                                                  help="Number of nursess or medical assistants")
             with cNU2:
                 arr_nu = st.number_input("Volume", 0, 500, _init_ss("arr_nu", 3), 1, "%d", disabled=(nu_cap_form==0), key="arr_nu_input",
                              help="Average number of tasks per hour")
@@ -2014,28 +2014,28 @@ if st.session_state.wizard_step == 1:
                     fd_loop_delay = st.slider("Delay to obtain", 0.0, 480.0, _init_ss("fd_loop_delay", 240.0), 0.5, disabled=(fd_cap_form==0), key="fd_delay")
             
                 st.markdown("**Disposition or routing Administrative staff**")
-                fd_route = route_row_ui("Administrative staff", {"Nurse": 0.50, "Doctors": 0.10, "Other staff": 0.10, DONE: 0.30}, 
+                fd_route = route_row_ui("Administrative staff", {"nurses": 0.50, "Doctors": 0.10, "Other staff": 0.10, DONE: 0.30}, 
                                    disabled_source=(fd_cap_form==0), fd_cap_val=fd_cap_form, nu_cap_val=nu_cap_form, 
                                    pr_cap_val=pr_cap_form, bo_cap_val=bo_cap_form)
         
-            with st.expander("Nurses", expanded=False):
+            with st.expander("nursess", expanded=False):
                 st.markdown("**Processing times**")
                 cNS1, cNS2 = st.columns(2)
                 with cNS1:
-                    svc_nurse_protocol = st.slider("Protocol Processing time (minutes)", 0.0, 30.0, _init_ss("svc_nurse_protocol", 2.0), 0.5, disabled=(nu_cap_form==0))
+                    svc_nurses_protocol = st.slider("Protocol Processing time (minutes)", 0.0, 30.0, _init_ss("svc_nurses_protocol", 2.0), 0.5, disabled=(nu_cap_form==0))
                     p_protocol = st.slider("Probability of using protocol", 0.0, 1.0, _init_ss("p_protocol", 0.30), 0.05, disabled=(nu_cap_form==0))
                 with cNS2:
-                    svc_nurse = st.slider("Non-protocol Processing time (minutes)", 0.0, 40.0, _init_ss("svc_nurse", 5.0), 0.5, disabled=(nu_cap_form==0))
+                    svc_nurses = st.slider("Non-protocol Processing time (minutes)", 0.0, 40.0, _init_ss("svc_nurses", 5.0), 0.5, disabled=(nu_cap_form==0))
                 
                 st.markdown("**Rework Loops**")
                 cNUL1, cNUL2 = st.columns(2)
                 with cNUL1:
-                    p_nurse_insuff = st.slider("Percent with insufficient info", 0.0, 1.0, _init_ss("p_nurse_insuff", 0.20), 0.01, disabled=(nu_cap_form==0), key="nu_p_insuff")
+                    p_nurses_insuff = st.slider("Percent with insufficient info", 0.0, 1.0, _init_ss("p_nurses_insuff", 0.20), 0.01, disabled=(nu_cap_form==0), key="nu_p_insuff")
                 with cNUL2:
-                    max_nurse_loops = st.number_input("Maximum number of loops", 0, 10, _init_ss("max_nurse_loops", 3), 1, "%d", disabled=(nu_cap_form==0), key="nu_max_loops")
+                    max_nurses_loops = st.number_input("Maximum number of loops", 0, 10, _init_ss("max_nurses_loops", 3), 1, "%d", disabled=(nu_cap_form==0), key="nu_max_loops")
             
-                st.markdown("**Disposition or routing Nurse**")
-                nu_route = route_row_ui("Nurse", {"Doctors": 0.40, "Other staff": 0.20, DONE: 0.40}, 
+                st.markdown("**Disposition or routing nurses**")
+                nu_route = route_row_ui("nurses", {"Doctors": 0.40, "Other staff": 0.20, DONE: 0.40}, 
                                    disabled_source=(nu_cap_form==0), fd_cap_val=fd_cap_form, nu_cap_val=nu_cap_form, 
                                    pr_cap_val=pr_cap_form, bo_cap_val=bo_cap_form)
         
@@ -2071,13 +2071,13 @@ if st.session_state.wizard_step == 1:
                     backoffice_loop_delay = st.slider("Delay to obtain", 0.0, 480.0, _init_ss("backoffice_loop_delay", 180.0), 0.5, disabled=(bo_cap_form==0), key="bo_delay")
             
                 st.markdown("**Disposition or routing Other staff**")
-                bo_route = route_row_ui("Other staff", {"Administrative staff": 0.10, "Nurse": 0.10, "Doctors": 0.10, DONE: 0.70}, 
+                bo_route = route_row_ui("Other staff", {"Administrative staff": 0.10, "nurses": 0.10, "Doctors": 0.10, DONE: 0.70}, 
                                    disabled_source=(bo_cap_form==0), fd_cap_val=fd_cap_form, nu_cap_val=nu_cap_form, 
                                    pr_cap_val=pr_cap_form, bo_cap_val=bo_cap_form)
         
             route: Dict[str, Dict[str, float]] = {}
             route["Administrative staff"] = fd_route
-            route["Nurse"] = nu_route
+            route["nurses"] = nu_route
             route["Doctors"] = pr_route
             route["Other staff"] = bo_route
 
@@ -2092,7 +2092,7 @@ if st.session_state.wizard_step == 1:
     
             # Staff capacities
             st.session_state.fd_cap = fd_cap_form
-            st.session_state.nurse_cap = nu_cap_form
+            st.session_state.nurses_cap = nu_cap_form
             st.session_state.provider_cap = pr_cap_form
             st.session_state.backoffice_cap = bo_cap_form
     
@@ -2118,8 +2118,8 @@ if st.session_state.wizard_step == 1:
     
             # Service times
             st.session_state.svc_frontdesk = svc_frontdesk
-            st.session_state.svc_nurse_protocol = svc_nurse_protocol
-            st.session_state.svc_nurse = svc_nurse
+            st.session_state.svc_nurses_protocol = svc_nurses_protocol
+            st.session_state.svc_nurses = svc_nurses
             st.session_state.p_protocol = p_protocol
             st.session_state.svc_provider = svc_provider
             st.session_state.svc_backoffice = svc_backoffice
@@ -2129,9 +2129,9 @@ if st.session_state.wizard_step == 1:
             st.session_state.max_fd_loops = max_fd_loops
             st.session_state.fd_loop_delay = fd_loop_delay
     
-            # Loop parameters - Nurse
-            st.session_state.p_nurse_insuff = p_nurse_insuff
-            st.session_state.max_nurse_loops = max_nurse_loops
+            # Loop parameters - nurses
+            st.session_state.p_nurses_insuff = p_nurses_insuff
+            st.session_state.max_nurses_loops = max_nurses_loops
         
             # Loop parameters - Provider
             st.session_state.p_provider_insuff = p_provider_insuff
@@ -2154,25 +2154,25 @@ if st.session_state.wizard_step == 1:
             for r in ROLES:
                 if r in route:
                     for tgt in list(route[r].keys()):
-                        if tgt in ROLES and {"Administrative staff": fd_cap_form, "Nurse": nu_cap_form, "Doctors": pr_cap_form, "Other staff": bo_cap_form}[tgt] == 0:
+                        if tgt in ROLES and {"Administrative staff": fd_cap_form, "nurses": nu_cap_form, "Doctors": pr_cap_form, "Other staff": bo_cap_form}[tgt] == 0:
                             route[r][tgt] = 0.0
 
             # Save design configuration
             st.session_state["design"] = dict(
                 sim_minutes=sim_minutes, open_minutes=open_minutes,
                 seed=seed, num_replications=num_replications,
-                frontdesk_cap=fd_cap_form, nurse_cap=nu_cap_form,
+                frontdesk_cap=fd_cap_form, nurses_cap=nu_cap_form,
                 provider_cap=pr_cap_form, backoffice_cap=bo_cap_form,
-                arrivals_per_hour_by_role={"Administrative staff": int(arr_fd), "Nurse": int(arr_nu), 
+                arrivals_per_hour_by_role={"Administrative staff": int(arr_fd), "nurses": int(arr_nu), 
                                   "Doctors": int(arr_pr), "Other staff": int(arr_bo)},
-                availability_per_day={"Administrative staff": int(avail_fd), "Nurse": int(avail_nu),
+                availability_per_day={"Administrative staff": int(avail_fd), "nurses": int(avail_nu),
                       "Doctors": int(avail_pr), "Other staff": int(avail_bo)},
-                svc_frontdesk=svc_frontdesk, svc_nurse_protocol=svc_nurse_protocol, svc_nurse=svc_nurse,
+                svc_frontdesk=svc_frontdesk, svc_nurses_protocol=svc_nurses_protocol, svc_nurses=svc_nurses,
                 svc_provider=svc_provider, svc_backoffice=svc_backoffice,
-                dist_role={"Administrative staff": "normal", "NurseProtocol": "normal", "Nurse": "exponential",
+                dist_role={"Administrative staff": "normal", "nursesProtocol": "normal", "nurses": "exponential",
                   "Doctors": "exponential", "Other staff": "exponential"},
                 cv_speed=cv_speed,
-                emr_overhead={"Administrative staff": 0.5, "Nurse": 0.5, "NurseProtocol": 0.5, "Doctors": 0.5, "Other staff": 0.5},
+                emr_overhead={"Administrative staff": 0.5, "nurses": 0.5, "nursesProtocol": 0.5, "Doctors": 0.5, "Other staff": 0.5},
                 burnout_weights={
                     "utilization": w_utilization,
                     "availability_stress": w_availability_stress,
@@ -2182,7 +2182,7 @@ if st.session_state.wizard_step == 1:
                     "throughput_deficit": w_throughput_deficit
                 },
                 p_fd_insuff=p_fd_insuff, max_fd_loops=max_fd_loops, fd_loop_delay=fd_loop_delay,
-                p_nurse_insuff=p_nurse_insuff, max_nurse_loops=max_nurse_loops,
+                p_nurses_insuff=p_nurses_insuff, max_nurses_loops=max_nurses_loops,
                 p_provider_insuff=p_provider_insuff, max_provider_loops=max_provider_loops, provider_loop_delay=provider_loop_delay,
                 p_backoffice_insuff=p_backoffice_insuff, max_backoffice_loops=max_backoffice_loops, backoffice_loop_delay=backoffice_loop_delay,
                 p_protocol=p_protocol, route_matrix=route
@@ -2210,7 +2210,7 @@ elif st.session_state.wizard_step == 2:
     num_replications = p.get("num_replications", 30)
         
     active_roles_caps = [("Doctors", p["provider_cap"]), ("Administrative staff", p["frontdesk_cap"]),
-                        ("Nurse", p["nurse_cap"]), ("Other staff", p["backoffice_cap"])]
+                        ("nurses", p["nurses_cap"]), ("Other staff", p["backoffice_cap"])]
     active_roles = [r for r, cap in active_roles_caps if cap > 0]
     
     all_metrics = []
