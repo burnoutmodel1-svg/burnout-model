@@ -427,9 +427,9 @@ def calculate_burnout(all_metrics: List[Metrics], p: Dict, active_roles: List[st
       - Throughput Deficit
     """
     weights = p.get("burnout_weights", {
-        "utilization": 7, "availability_stress": 3,
-        "rework": 6, "task_switching": 4,
-        "incompletion": 5, "throughput_deficit": 5
+        "utilization": 8, "availability_stress": 1,
+        "rework": 8, "task_switching": 1,
+        "incompletion": 1, "throughput_deficit": 1
     })
     
     # Normalize weights
@@ -1057,9 +1057,9 @@ def plot_burnout_over_days(all_metrics: List[Metrics], p: Dict, active_roles: Li
     open_minutes_per_day = p["open_minutes"]
     
     weights = p.get("burnout_weights", {
-        "utilization": 7, "availability_stress": 3,
-        "rework": 6, "task_switching": 4,
-        "incompletion": 5, "throughput_deficit": 5
+        "utilization": 8, "availability_stress": 1,
+        "rework": 8, "task_switching": 1,
+        "incompletion": 1, "throughput_deficit": 1
     })
     
     total_weight = sum(weights.values())
@@ -1980,24 +1980,24 @@ if st.session_state.wizard_step == 1:
 
                 with col1:
                     st.markdown("**Emotional Exhaustion Contributors:**")
-                    w_utilization = st.slider("Utilization", 0, 10, _init_ss("w_utilization", 7), 1, 
+                    w_utilization = st.slider("Utilization", 0, 10, _init_ss("w_utilization", 8), 1, 
                                   help="How much does high utilization contribute to burnout?")
-                    w_availability_stress = st.slider("Availability Stress", 0, 10, _init_ss("w_availability_stress", 3), 1,
+                    w_availability_stress = st.slider("Availability Stress", 0, 10, _init_ss("w_availability_stress", 1), 1,
                                          help="How much does limited availability contribute to burnout?")
-        
+                
                     st.markdown("**Depersonalization Contributors:**")
-                    w_rework = st.slider("Rework Percentage", 0, 10, _init_ss("w_rework", 6), 1,
+                    w_rework = st.slider("Rework Percentage", 0, 10, _init_ss("w_rework", 8), 1,
                             help="How much does rework contribute to burnout?")
-                    w_task_switching = st.slider("Task Switching (Queue Volatility)", 0, 10, _init_ss("w_task_switching", 4), 1,
+                    w_task_switching = st.slider("Task Switching (Queue Volatility)", 0, 10, _init_ss("w_task_switching", 1), 1,
                                     help="How much does unpredictable workload contribute to burnout?")
-
+                
                 with col2:
                     st.markdown("**Reduced Accomplishment Contributors:**")
-                    w_incompletion = st.slider("Incomplete Tasks", 0, 10, _init_ss("w_incompletion", 5), 1,
+                    w_incompletion = st.slider("Incomplete Tasks", 0, 10, _init_ss("w_incompletion", 1), 1,
                                    help="How much do incomplete tasks contribute to burnout?")
-                    w_throughput_deficit = st.slider("Throughput Deficit", 0, 10, _init_ss("w_throughput_deficit", 5), 1,
+                    w_throughput_deficit = st.slider("Throughput Deficit", 0, 10, _init_ss("w_throughput_deficit", 1), 1,
                                         help="How much does falling behind expected throughput contribute to burnout?")
-
+                
                 # Calculate and display normalized weights
                 total_weight = w_utilization + w_availability_stress + w_rework + w_task_switching + w_incompletion + w_throughput_deficit
                 if total_weight > 0:
