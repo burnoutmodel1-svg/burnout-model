@@ -646,7 +646,7 @@ def plot_daily_utilization(all_metrics: List[Metrics], p: Dict, active_roles: Li
         lower = [max(0, means[i] - stds[i]) for i in range(num_days)]
         ax.fill_between(x, lower, upper, color=colors.get(role, '#333333'), alpha=0.1)
 
-    ax.set_xlabel('Operational Day', fontsize=11, fontweight='bold')
+    ax.set_xlabel('day', fontsize=11, fontweight='bold')
     ax.set_ylabel('Utilization (%)', fontsize=11, fontweight='bold')
     ax.set_title('Daily Staff Utilization by Role', fontsize=12, fontweight='bold')
     
@@ -699,9 +699,9 @@ def plot_queue_over_time(all_metrics: List[Metrics], p: Dict, active_roles: List
             ax.fill_between(x, mean_daily - std_daily, mean_daily + std_daily,
                           color=colors.get(role, '#333333'), alpha=0.15)
     
-    ax.set_xlabel('Operational Day', fontsize=11, fontweight='bold')
+    ax.set_xlabel('Day', fontsize=11, fontweight='bold')
     ax.set_ylabel('Queue Length (end of day)', fontsize=11, fontweight='bold')
-    ax.set_title('Queue Backlog Trends by Role', fontsize=12, fontweight='bold')
+    ax.set_title('Backlog', fontsize=12, fontweight='bold')
     
     if num_days > 0:
         x_ticks = np.arange(1, num_days + 1)
@@ -742,7 +742,7 @@ def plot_daily_throughput(all_metrics: List[Metrics], p: Dict, active_roles: Lis
                 start_t = d * DAY_MIN
                 end_t = start_t + open_minutes
                 
-                # Count tasks for THIS ROLE completed during this operational day
+                # Count tasks for THIS ROLE completed during this day
                 completed = sum(1 for task_id, ct in metrics.task_completion_time.items() 
                                if start_t <= ct < end_t and task_id.startswith(prefix))
                 daily_completed_lists[d].append(completed)
@@ -762,9 +762,9 @@ def plot_daily_throughput(all_metrics: List[Metrics], p: Dict, active_roles: Lis
         lower_bound = [max(0, daily_means[i] - daily_stds[i]) for i in range(num_days)]
         ax.fill_between(x, lower_bound, upper_bound, color=colors.get(role, '#333333'), alpha=0.1)
     
-    ax.set_xlabel('Operational Day', fontsize=11, fontweight='bold')
+    ax.set_xlabel('Day', fontsize=11, fontweight='bold')
     ax.set_ylabel('Tasks Completed', fontsize=11, fontweight='bold')
-    ax.set_title('Daily Throughput by Role', fontsize=12, fontweight='bold')
+    ax.set_title('Daily Number Processed', fontsize=12, fontweight='bold')
     
     if num_days > 0:
         x_ticks = np.arange(1, num_days + 1)
@@ -821,7 +821,7 @@ def plot_response_time_distribution(all_metrics: List[Metrics], p: Dict):
     lower_bound = np.maximum(0, mean_counts - std_counts)
     ax.fill_between(bin_centers, lower_bound, upper_bound, color='#1f77b4', alpha=0.15)
     
-    ax.set_xlabel('Response Time (hours)', fontsize=11, fontweight='bold')
+    ax.set_xlabel('Hours', fontsize=11, fontweight='bold')
     ax.set_ylabel('Number of Tasks', fontsize=11, fontweight='bold')
     ax.set_title('Distribution of Task Completion Times', fontsize=12, fontweight='bold')
     ax.set_xlim(0, 48)
@@ -885,9 +885,9 @@ def plot_completion_by_day(all_metrics: List[Metrics], p: Dict):
     # Add error bars
     ax.errorbar(x, means, yerr=stds, fmt='none', ecolor='black', capsize=5, alpha=0.6)
     
-    ax.set_xlabel('Time to Completion', fontsize=11, fontweight='bold')
+    ax.set_xlabel('Completion', fontsize=11, fontweight='bold')
     ax.set_ylabel('Number of Tasks', fontsize=11, fontweight='bold')
-    ax.set_title('Task Completion Timeline', fontsize=12, fontweight='bold')
+    ax.set_title('Delays in Days', fontsize=12, fontweight='bold')
     ax.set_xticks(x)
     ax.set_xticklabels(categories, fontsize=9)
     ax.set_ylim(bottom=0)
@@ -963,7 +963,7 @@ def plot_daily_completion_rate(all_metrics: List[Metrics], p: Dict, active_roles
         lower = [max(0, means[i] - stds[i]) for i in range(num_days)]
         ax.fill_between(x, lower, upper, color=colors.get(role, '#333333'), alpha=0.1)
     
-    ax.set_xlabel('Operational Day', fontsize=11, fontweight='bold')
+    ax.set_xlabel('day', fontsize=11, fontweight='bold')
     ax.set_ylabel('Same-Day Completion Rate (%)', fontsize=11, fontweight='bold')
     ax.set_title('Daily Same-Day Task Completion by Role', fontsize=12, fontweight='bold')
     
@@ -1029,8 +1029,8 @@ def plot_daily_workload(all_metrics: List[Metrics], p: Dict, active_roles: List[
     # Add threshold lines (these are approximate based on average service times)
     y_max = ax.get_ylim()[1]
     
-    ax.set_xlabel('Operational Day', fontsize=11, fontweight='bold')
-    ax.set_ylabel('Tasks Arriving', fontsize=11, fontweight='bold')
+    ax.set_xlabel('Day', fontsize=11, fontweight='bold')
+    ax.set_ylabel('New Number Tasks', fontsize=11, fontweight='bold')
     ax.set_title('Daily Workload by Role', fontsize=12, fontweight='bold')
     
     if num_days > 0:
@@ -1224,9 +1224,9 @@ def plot_burnout_over_days(all_metrics: List[Metrics], p: Dict, active_roles: Li
         ax.fill_between(x, lower, upper, color=colors.get(role, '#333333'), alpha=0.1)
     
     # Add burnout threshold lines
-    ax.set_xlabel('Operational Day', fontsize=11, fontweight='bold')
+    ax.set_xlabel('Day', fontsize=11, fontweight='bold')
     ax.set_ylabel('Burnout Score (0-100)', fontsize=11, fontweight='bold')
-    ax.set_title('Burnout Progression by Role', fontsize=12, fontweight='bold')
+    ax.set_title('Burnout', fontsize=12, fontweight='bold')
     
     if num_days > 0:
         x_ticks = np.arange(1, num_days + 1)
@@ -1304,9 +1304,9 @@ def plot_rerouting_by_day(all_metrics: List[Metrics], p: Dict, active_roles: Lis
         lower = [max(0, means[i] - stds[i]) for i in range(num_days)]
         ax.fill_between(x, lower, upper, color=colors.get(role, '#333333'), alpha=0.1)
     
-    ax.set_xlabel('Operational Day', fontsize=11, fontweight='bold')
+    ax.set_xlabel('Day', fontsize=11, fontweight='bold')
     ax.set_ylabel('Number of Reroutes', fontsize=11, fontweight='bold')
-    ax.set_title('Rerouting (Inappropriate Receipt) by Role', fontsize=12, fontweight='bold')
+    ax.set_title('Inappropriate Receipt (Rerouting)', fontsize=12, fontweight='bold')
     
     if num_days > 0:
         x_ticks = np.arange(1, num_days + 1)
@@ -1368,9 +1368,9 @@ def plot_missing_info_by_day(all_metrics: List[Metrics], p: Dict, active_roles: 
         lower = [max(0, means[i] - stds[i]) for i in range(num_days)]
         ax.fill_between(x, lower, upper, color=colors.get(role, '#333333'), alpha=0.1)
     
-    ax.set_xlabel('Operational Day', fontsize=11, fontweight='bold')
+    ax.set_xlabel('Day', fontsize=11, fontweight='bold')
     ax.set_ylabel('Missing Info Events', fontsize=11, fontweight='bold')
-    ax.set_title('Missing Info (Call Backs) by Role', fontsize=12, fontweight='bold')
+    ax.set_title('Missing Information or Call Backs', fontsize=12, fontweight='bold')
     
     if num_days > 0:
         x_ticks = np.arange(1, num_days + 1)
@@ -1795,6 +1795,7 @@ def create_excel_download(all_metrics: List[Metrics], p: Dict) -> BytesIO:
 # =============================
 st.set_page_config(page_title="Community Health Center Workflow Model", layout="wide")
 st.title("Community Health Center Workflow Model")
+st.subheader("Healthcare Systems Engineering Insitute (AHRQ grant #___)")
 st.caption("By Ines Sereno")
 
 if "wizard_step" not in st.session_state:
@@ -1842,11 +1843,10 @@ if st.session_state.wizard_step == 1:
         associated burnout and to help evaluate potential process improvements and interventions.
         
         **How tool works:**
-        - Patient-initiated paperwork, calls, or postal messages are received by various staff (nurses, Doctors, staff)
-        - Staff process these based on availability and Processing times
+        - Patient-initiated paperwork, calls, or postal messages are received by various staff (nurses, doctors, staff)
+        - Staff process these based on availability and processing times
         - Items received by the wrong type of personnel are routed appropriately
-        The model tracks daily workload, inefficiency, response delays, and contribution to burnout for each type of role
-        - The simulation tracks queues, wait times, and completion rates over multiple days
+        - The model tracks daily workload, inefficiency, response delays, and contribution to burnout for each type of personnel
         
         **How to use:**
         1. **Define your clinic** below by setting staffing levels, routing logic, and processing times
@@ -1858,7 +1858,7 @@ if st.session_state.wizard_step == 1:
         - Start with inputs that define the current process
         - Change one thing at a time to understand its impact
         - Pay attention to roles showing high utilization (>75%) or high burnout (>50)
-        - Use the KPI banner in results to quickly compare different scenarios
+        - Use results to quickly compare different scenarios
         """)
     
     st.markdown("---")
@@ -1884,16 +1884,16 @@ if st.session_state.wizard_step == 1:
         return row
                          
     with st.form("design_form", clear_on_submit=False):
-        st.markdown("  Simulation horizon")
-        sim_days = st.number_input("Days to simulate", 1, 30, _init_ss("sim_days", 5), 1, "%d",
-                               help="Number of clinic operating days to simulate")
-        open_hours = st.number_input("Hours open per day", 1, 24, _init_ss("open_hours", 8), 1, "%d",
-                                  help="Number of hours the clinic is open each day")
+        with st.expander("Simulation Horizon", expanded=False):
+            sim_days = st.number_input("Days to simulate", 1, 30, _init_ss("sim_days", 5), 1, "%d",
+                                   help="Number of clinic operating days to simulate")
+            open_hours = st.number_input("Hours open per day", 1, 24, _init_ss("open_hours", 8), 1, "%d",
+                                      help="Number of hours the clinic is open each day")
     
         seed = 42  # Fixed seed for reproducibility
 
-        st.markdown("  Roles")
-        st.caption("Configure staffing, arrivals, and availability for each role")
+        with st.expander("Roles", expanded=False):
+            st.caption("Configure staffing, arrivals, and availability for each role")
     
         with st.expander("Administrative staff", expanded=False):
             cFD1, cFD2, cFD3 = st.columns(3)
@@ -1901,8 +1901,8 @@ if st.session_state.wizard_step == 1:
                 fd_cap_form = st.number_input("Number working per day", 0, 50, _init_ss("fd_cap", 3), 1, "%d", key="fd_cap_input",
                                                help="Number of Administrative staff")
             with cFD2:
-                arr_fd = st.number_input("Volume", 0, 500, _init_ss("arr_fd", 4), 1, "%d", disabled=(fd_cap_form==0), key="arr_fd_input",
-                             help="Average number of tasks per hour")
+                arr_fd = st.number_input("Volume per day", 0, 500, _init_ss("arr_fd", 4), 1, "%d", disabled=(fd_cap_form==0), key="arr_fd_input",
+                             help="Average number of tasks per day")
             with cFD3:
                 avail_fd = st.number_input("Availability (min/day)", 0, 480, _init_ss("avail_fd", 240), 1, "%d", disabled=(fd_cap_form==0), key="avail_fd_input",
                                help="Minutes per day available for work (max = hours open × 60)")
@@ -1913,8 +1913,8 @@ if st.session_state.wizard_step == 1:
                 nu_cap_form = st.number_input("Number working per day", 0, 50, _init_ss("nurse_cap", 3), 1, "%d", key="nurse_cap_input",
                                                   help="Number of nurses or medical assistants")
             with cNU2:
-                arr_nu = st.number_input("Volume", 0, 500, _init_ss("arr_nu", 3), 1, "%d", disabled=(nu_cap_form==0), key="arr_nu_input",
-                             help="Average number of tasks per hour")
+                arr_nu = st.number_input("Volume per day", 0, 500, _init_ss("arr_nu", 3), 1, "%d", disabled=(nu_cap_form==0), key="arr_nu_input",
+                             help="Average number of tasks per day")
             with cNU3:
                 avail_nu = st.number_input("Availability (min/day)", 0, 480, _init_ss("avail_nu", 120), 1, "%d", disabled=(nu_cap_form==0), key="avail_nu_input",
                                help="Minutes per day available for work (max = hours open × 60)")
@@ -1925,8 +1925,8 @@ if st.session_state.wizard_step == 1:
                 pr_cap_form = st.number_input("Number working per day", 0, 50, _init_ss("provider_cap", 2), 1, "%d", key="provider_cap_input",
                                                      help="Number of Doctors")
             with cPR2:
-                arr_pr = st.number_input("Volume", 0, 500, _init_ss("arr_pr", 2), 1, "%d", disabled=(pr_cap_form==0), key="arr_pr_input",
-                             help="Average number of tasks per hour")
+                arr_pr = st.number_input("Volume per day", 0, 500, _init_ss("arr_pr", 2), 1, "%d", disabled=(pr_cap_form==0), key="arr_pr_input",
+                             help="Average number of tasks per day")
             with cPR3:
                 avail_pr = st.number_input("Availability (min/day)", 0, 480, _init_ss("avail_pr", 60), 1, "%d", disabled=(pr_cap_form==0), key="avail_pr_input",
                                help="Minutes per day available for work (max = hours open × 60)")
@@ -1938,7 +1938,7 @@ if st.session_state.wizard_step == 1:
                                                help="Number of Other staff")
             with cBO2:
                  arr_bo = st.number_input("Volume", 0, 500, _init_ss("arr_bo", 2), 1, "%d", disabled=(bo_cap_form==0), key="arr_bo_input",
-                             help="Average number of tasks per hour")
+                             help="Average number of tasks per day")
             with cBO3:
                 avail_bo = st.number_input("Availability (min/day)", 0, 480, _init_ss("avail_bo", 180), 1, "%d", disabled=(bo_cap_form==0), key="avail_bo_input",
                                help="Minutes per day available for work (max = hours open × 60)")
@@ -1967,37 +1967,37 @@ if st.session_state.wizard_step == 1:
 
         with st.expander("Advanced Settings – Processing times, loops & routing", expanded=False):
         
-            st.markdown("  Contributors to Burnout-Relative Weights")
-            st.caption("Assign each factor a weight between 0 and 10 (0 = no contribution, 10 = maximum contribution)")
+            with st.expander("Contributors to Burnout - Relative Weights", expanded=False):
+                st.caption("Assign each factor a weight between 0 and 10 (0 = no contribution, 10 = maximum contribution)")
 
-            col1, col2 = st.columns(2)
+                col1, col2 = st.columns(2)
 
-            with col1:
-                st.markdown("**Emotional Exhaustion Contributors:**")
-                w_utilization = st.slider("Utilization", 0, 10, _init_ss("w_utilization", 7), 1, 
-                              help="How much does high utilization contribute to burnout?")
-                w_availability_stress = st.slider("Availability Stress", 0, 10, _init_ss("w_availability_stress", 3), 1,
-                                     help="How much does limited availability contribute to burnout?")
-    
-                st.markdown("**Depersonalization Contributors:**")
-                w_rework = st.slider("Rework Percentage", 0, 10, _init_ss("w_rework", 6), 1,
-                        help="How much does rework contribute to burnout?")
-                w_task_switching = st.slider("Task Switching (Queue Volatility)", 0, 10, _init_ss("w_task_switching", 4), 1,
-                                help="How much does unpredictable workload contribute to burnout?")
+                with col1:
+                    st.markdown("**Emotional Exhaustion Contributors:**")
+                    w_utilization = st.slider("Utilization", 0, 10, _init_ss("w_utilization", 7), 1, 
+                                  help="How much does high utilization contribute to burnout?")
+                    w_availability_stress = st.slider("Availability Stress", 0, 10, _init_ss("w_availability_stress", 3), 1,
+                                         help="How much does limited availability contribute to burnout?")
+        
+                    st.markdown("**Depersonalization Contributors:**")
+                    w_rework = st.slider("Rework Percentage", 0, 10, _init_ss("w_rework", 6), 1,
+                            help="How much does rework contribute to burnout?")
+                    w_task_switching = st.slider("Task Switching (Queue Volatility)", 0, 10, _init_ss("w_task_switching", 4), 1,
+                                    help="How much does unpredictable workload contribute to burnout?")
 
-            with col2:
-                st.markdown("**Reduced Accomplishment Contributors:**")
-                w_incompletion = st.slider("Incomplete Tasks", 0, 10, _init_ss("w_incompletion", 5), 1,
-                               help="How much do incomplete tasks contribute to burnout?")
-                w_throughput_deficit = st.slider("Throughput Deficit", 0, 10, _init_ss("w_throughput_deficit", 5), 1,
-                                    help="How much does falling behind expected throughput contribute to burnout?")
+                with col2:
+                    st.markdown("**Reduced Accomplishment Contributors:**")
+                    w_incompletion = st.slider("Incomplete Tasks", 0, 10, _init_ss("w_incompletion", 5), 1,
+                                   help="How much do incomplete tasks contribute to burnout?")
+                    w_throughput_deficit = st.slider("Throughput Deficit", 0, 10, _init_ss("w_throughput_deficit", 5), 1,
+                                        help="How much does falling behind expected throughput contribute to burnout?")
 
-            # Calculate and display normalized weights
-            total_weight = w_utilization + w_availability_stress + w_rework + w_task_switching + w_incompletion + w_throughput_deficit
-            if total_weight > 0:
-                st.info(f"**Total weight: {total_weight}** — All scores will be normalized to 0-100 scale")
-            else:
-                st.warning("⚠️ All weights are 0 - burnout scores will be 0")
+                # Calculate and display normalized weights
+                total_weight = w_utilization + w_availability_stress + w_rework + w_task_switching + w_incompletion + w_throughput_deficit
+                if total_weight > 0:
+                    st.info(f"**Total weight: {total_weight}** — All scores will be normalized to 0-100 scale")
+                else:
+                    st.warning("All weights are 0 - burnout scores will be 0")
         
             with st.expander("Administrative staff", expanded=False):
                 st.markdown("**Processing time**")
@@ -2013,7 +2013,7 @@ if st.session_state.wizard_step == 1:
                 with cFDL3:
                     fd_loop_delay = st.slider("Delay to obtain", 0.0, 480.0, _init_ss("fd_loop_delay", 240.0), 0.5, disabled=(fd_cap_form==0), key="fd_delay")
             
-                st.markdown("**Disposition or routing Administrative staff**")
+                st.markdown("**Disposition or routing**")
                 fd_route_defaults = {
                     "Nurse": float(st.session_state.get("saved_r_Administrative staff_to_nurse", 
                                    st.session_state.get("r_Administrative staff_to_nurse", "0.50")).replace(",", ".")),
@@ -2044,7 +2044,7 @@ if st.session_state.wizard_step == 1:
                 with cNUL2:
                     max_nurse_loops = st.number_input("Maximum number of loops", 0, 10, _init_ss("max_nurse_loops", 3), 1, "%d", disabled=(nu_cap_form==0), key="nu_max_loops")
             
-                st.markdown("**Disposition or routing Nurse**")
+                st.markdown("**Disposition or routing**")
                 nu_route_defaults = {
                     "Doctors": float(st.session_state.get("saved_r_Nurse_to_doctors",
                                      st.session_state.get("r_Nurse_to_doctors", "0.40")).replace(",", ".")),
@@ -2070,7 +2070,7 @@ if st.session_state.wizard_step == 1:
                 with cPRL3:
                     provider_loop_delay = st.slider("Delay to obtain", 0.0, 480.0, _init_ss("provider_loop_delay", 300.0), 0.5, disabled=(pr_cap_form==0), key="pr_delay")
             
-                st.markdown("**Disposition or routing Doctors**")
+                st.markdown("**Disposition or routing**")
                 pr_route_defaults = {
                     "Other staff": float(st.session_state.get("saved_r_Doctors_to_other_staff",
                                          st.session_state.get("r_Doctors_to_other_staff", "0.30")).replace(",", ".")),
@@ -2094,7 +2094,7 @@ if st.session_state.wizard_step == 1:
                 with cBOL3:
                     backoffice_loop_delay = st.slider("Delay to obtain", 0.0, 480.0, _init_ss("backoffice_loop_delay", 180.0), 0.5, disabled=(bo_cap_form==0), key="bo_delay")
             
-                st.markdown("**Disposition or routing Other staff**")
+                st.markdown("**Disposition or routing**")
                 bo_route_defaults = {
                     "Administrative staff": float(st.session_state.get("saved_r_Other staff_to_administrative_staff",
                                                   st.session_state.get("r_Other staff_to_administrative_staff", "0.10")).replace(",", ".")),
@@ -2320,7 +2320,6 @@ elif st.session_state.wizard_step == 2:
 
     # System Performance - Collapsible
     with st.expander("System Performance", expanded=False):
-        st.caption("How well is the clinic handling incoming work?")
         
         col1, col2 = st.columns(2)
         with col1:
@@ -2369,7 +2368,6 @@ elif st.session_state.wizard_step == 2:
 
     # Response Times (Patient Care) - Collapsible
     with st.expander("Response Times (Patient Care)", expanded=False):
-        st.caption("How quickly are tasks being completed?")
         
         col1, col2 = st.columns(2)
         with col1:
@@ -2391,8 +2389,8 @@ elif st.session_state.wizard_step == 2:
                  title="How is Response Time Distribution calculated?")
         with col2:
             help_icon("**Calculation:** Counts tasks by completion time relative to arrival day:\n"
-                 "• Same Day = completed same operational day\n"
-                 "• +1 Day = completed 1 operational day later\n"
+                 "• Same Day = completed same day\n"
+                 "• +1 Day = completed 1 day later\n"
                  "• +2/+3 Days = 2-3 days later\n"
                  "• +4+ Days = 4 or more days later\n\n"
                  "**Interpretation:** More green (same day) = better patient care. "
@@ -2423,7 +2421,6 @@ elif st.session_state.wizard_step == 2:
 
     # Workload - Collapsible
     with st.expander("Workload", expanded=False):
-        st.caption("How is workload distributed and evolving over time?")
         
         # First row: Daily Workload and Burnout Over Days
         col1, col2 = st.columns(2)
