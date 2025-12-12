@@ -645,11 +645,7 @@ def plot_daily_utilization(all_metrics: List[Metrics], p: Dict, active_roles: Li
         upper = [means[i] + stds[i] for i in range(num_days)]
         lower = [max(0, means[i] - stds[i]) for i in range(num_days)]
         ax.fill_between(x, lower, upper, color=colors.get(role, '#333333'), alpha=0.1)
-    
-    # Add threshold lines
-    ax.axhline(y=75, color='orange', linestyle='--', linewidth=1.5, alpha=0.5, label='75% threshold')
-    ax.axhline(y=90, color='red', linestyle='--', linewidth=1.5, alpha=0.5, label='90% threshold')
-    
+
     ax.set_xlabel('Operational Day', fontsize=11, fontweight='bold')
     ax.set_ylabel('Utilization (%)', fontsize=11, fontweight='bold')
     ax.set_title('Daily Staff Utilization by Role', fontsize=12, fontweight='bold')
