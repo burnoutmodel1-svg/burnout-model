@@ -968,7 +968,7 @@ def plot_daily_completion_rate(all_metrics: List[Metrics], p: Dict, active_roles
         lower = [max(0, means[i] - stds[i]) for i in range(num_days)]
         ax.fill_between(x, lower, upper, color=colors.get(role, '#333333'), alpha=0.1)
     
-    ax.set_xlabel('day', fontsize=11, fontweight='bold')
+    ax.set_xlabel('Day', fontsize=11, fontweight='bold')
     ax.set_ylabel('Same-Day Completion Rate (%)', fontsize=11, fontweight='bold')
     ax.set_title('Daily Same-Day Task Completion by Role', fontsize=12, fontweight='bold')
     
