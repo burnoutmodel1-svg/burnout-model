@@ -1718,7 +1718,142 @@ def create_summary_table(all_metrics: List[Metrics], p: Dict, burnout_data: Dict
                 util_by_role[role].append(util)
     
     # Burnout by role
-    burnout_by_role = {r: burnout_data["by_role"][r]["overall"] for r in active_roles}
+    # Burnout by role - calculate as average of daily burnout scores
+    burnout_by_role = {}
+    
+    num_days = max(1, int(p["sim_minutes"] // DAY_MIN))
+    open_minutes_per_day = p["open_minutes"]
+    
+    weights = p.get("burnout_weights", {
+        "utilization": 8, "availability_stress": 1,
+        "rework": 8, "task_switching": 1,
+        "incompletion": 1, "throughput_deficit": 1
+    })
+    
+    total_weight = sum(weights.values())
+    if total_weight > 0:
+        norm_weights = {k: v / total_weight for k, v in weights.items()}
+        
+        for role in active_roles:
+            capacity = {
+                "Administrative staff": p["frontdesk_cap"],
+                "Nurse": p["nurse_cap"],
+                "Doctors": p["provider_cap"],
+                "Other staff": p["backoffice_cap"]
+            }[role]
+            
+            if capacity == 0:
+                burnout_by_role[role] = 0.0
+                continue
+            
+            avail_minutes_per_day = p.get("availability_per_day", {}).get(role, open_minutes_per_day)
+            
+            # Map role to INSUFF step code
+            loop_step_map = {
+                "Administrative staff": "FD_INSUFF",
+                "Nurse": "NU_INSUFF",
+                "Doctors": "PR_INSUFF",
+                "Other staff": "BO_INSUFF"
+            }
+            insuff_step = loop_step_map[role]
+            
+            role_queue_step = {
+                "Administrative staff": "FD_QUEUE",
+                "Nurse": "NU_QUEUE",
+                "Doctors": "PR_QUEUE",
+                "Other staff": "BO_QUEUE"
+            }
+            queue_step = role_queue_step.get(role)
+            
+            avg_service_time = {
+                "Administrative staff": p.get("svc_frontdesk", 10),
+                "Nurse": p.get("svc_nurse", 15),
+                "Doctors": p.get("svc_provider", 20),
+                "Other staff": p.get("svc_backoffice", 12)
+            }.get(role, 10)
+            
+            role_prefix_map = {
+                "Administrative staff": "AD",
+                "Nurse": "NU",
+                "Doctors": "DO",
+                "Other staff": "OT"
+            }
+            prefix = role_prefix_map.get(role, "")
+            
+            # Calculate daily burnout for each replication, then average
+            all_daily_burnouts = []
+            
+            for metrics in all_metrics:
+                for d in range(num_days):
+                    day_start = d * DAY_MIN
+                    day_end = day_start + open_minutes_per_day
+                    
+                    # 1. UTILIZATION
+                    tasks_served_today = sum(1 for t, name, step, note, arr in metrics.events
+                                            if step == queue_step and day_start <= t < day_end)
+                    available_capacity_minutes = capacity * avail_minutes_per_day
+                    estimated_work_time = tasks_served_today * avg_service_time
+                    daily_util = min(1.0, estimated_work_time / max(1, available_capacity_minutes))
+                    
+                    # 2. REWORK
+                    daily_loops = sum(1 for t, name, step, note, arr in metrics.events 
+                                     if step == insuff_step and day_start <= t < day_end)
+                    daily_rework = min(1.0, daily_loops / 5.0)
+                    
+                    # 3. TASK SWITCHING
+                    day_queue_samples = [metrics.queues[role][i] for i, t in enumerate(metrics.time_stamps) 
+                                        if day_start <= t < day_end]
+                    if len(day_queue_samples) > 1:
+                        q_std = np.std(day_queue_samples)
+                        daily_volatility = min(1.0, q_std / max(1, capacity * 3))
+                    else:
+                        daily_volatility = 0.0
+                    
+                    # 4. INCOMPLETION
+                    tasks_at_role_today = set()
+                    for t, name, step, note, arr in metrics.events:
+                        if step == queue_step and day_start <= t < day_end:
+                            tasks_at_role_today.add(name)
+                    
+                    if tasks_at_role_today:
+                        tasks_completed_same_day = sum(1 for task_id in tasks_at_role_today
+                                                       if task_id in metrics.task_completion_time
+                                                       and metrics.task_completion_time[task_id] < day_end)
+                        daily_incompletion = 1.0 - (tasks_completed_same_day / len(tasks_at_role_today))
+                    else:
+                        daily_incompletion = 0.0
+                    
+                    # 5. THROUGHPUT DEFICIT
+                    tasks_completed_today = sum(1 for task_id, ct in metrics.task_completion_time.items()
+                                               if day_start <= ct < day_end and task_id.startswith(prefix))
+                    expected_daily = p["arrivals_per_hour_by_role"].get(role, 1) * open_minutes_per_day / 60.0
+                    
+                    if expected_daily > 0:
+                        daily_throughput_deficit = max(0.0, min(1.0, 1.0 - (tasks_completed_today / expected_daily)))
+                    else:
+                        daily_throughput_deficit = 0.0
+                    
+                    # 6. AVAILABILITY STRESS
+                    avail_stress = (open_minutes_per_day - float(avail_minutes_per_day)) / open_minutes_per_day
+                    avail_stress = min(max(avail_stress, 0.0), 1.0)
+                    
+                    # Calculate burnout for this day
+                    components = {
+                        "utilization": 100.0 * daily_util,
+                        "availability_stress": 100.0 * avail_stress,
+                        "rework": 100.0 * daily_rework,
+                        "task_switching": 100.0 * daily_volatility,
+                        "incompletion": 100.0 * daily_incompletion,
+                        "throughput_deficit": 100.0 * daily_throughput_deficit
+                    }
+                    
+                    burnout_score = sum(norm_weights[k] * components[k] for k in components.keys())
+                    all_daily_burnouts.append(burnout_score)
+            
+            # Average across all days and replications
+            burnout_by_role[role] = np.mean(all_daily_burnouts) if all_daily_burnouts else 0.0
+    else:
+        burnout_by_role = {r: 0.0 for r in active_roles}
     
     # Build the table data
     table_data = {
