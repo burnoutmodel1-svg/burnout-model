@@ -1900,7 +1900,7 @@ if st.session_state.wizard_step == 1:
         with st.expander("Roles", expanded=False):
             st.caption("Configure staffing, arrivals, and availability for each role")
             
-            st.markdown("### Administrative staff")
+            st.markdown("#### Administrative staff")
             cFD1, cFD2, cFD3 = st.columns(3)
             with cFD1:
                 fd_cap_form = st.number_input("Number working per day", 0, 50, _init_ss("fd_cap", 3), 1, "%d", key="fd_cap_input",
