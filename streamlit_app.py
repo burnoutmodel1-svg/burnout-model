@@ -1914,7 +1914,7 @@ if st.session_state.wizard_step == 1:
             
             st.markdown("---")
             
-            st.markdown("### Nurses")
+            st.markdown("##### Nurses")
             cNU1, cNU2, cNU3 = st.columns(3)
             with cNU1:
                 nu_cap_form = st.number_input("Number working per day", 0, 50, _init_ss("nurse_cap", 3), 1, "%d", key="nurse_cap_input",
@@ -1928,7 +1928,7 @@ if st.session_state.wizard_step == 1:
             
             st.markdown("---")
             
-            st.markdown("### Doctors")
+            st.markdown("##### Doctors")
             cPR1, cPR2, cPR3 = st.columns(3)
             with cPR1:
                 pr_cap_form = st.number_input("Number working per day", 0, 50, _init_ss("provider_cap", 2), 1, "%d", key="provider_cap_input",
@@ -1942,7 +1942,7 @@ if st.session_state.wizard_step == 1:
             
             st.markdown("---")
             
-            st.markdown("### Other staff")
+            st.markdown("##### Other staff")
             cBO1, cBO2, cBO3 = st.columns(3)
             with cBO1:
                 bo_cap_form = st.number_input("Number working per day", 0, 50, _init_ss("backoffice_cap", 2), 1, "%d", key="bo_cap_input",
