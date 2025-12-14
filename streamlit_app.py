@@ -2244,7 +2244,7 @@ if st.session_state.wizard_step == 1:
                 with cNS2:
                     svc_nurse = st.slider("Non-protocol Processing time (minutes)", 0.0, 40.0, _init_ss("svc_nurse", 5.0), 0.5, disabled=(nu_cap_form==0))
                 
-               st.markdown("**Rework Loops**")
+                st.markdown("**Rework Loops**")
                 st.caption("Insufficient info = patient-side delays (50% reprocess time). Rework = internal errors (33% reprocess time).")
                 
                 st.markdown("*Missing Info (patient-side, routes to Admin staff):*")
@@ -2262,7 +2262,7 @@ if st.session_state.wizard_step == 1:
                     nurse_rework_delay = st.slider("Delay to identify rework (min)", 0.0, 240.0, _init_ss("nurse_rework_delay", 60.0), 1.0, disabled=(nu_cap_form==0), key="nu_rework_delay")
                 
                 max_nurse_loops = st.number_input("Maximum number of loops (both types combined)", 0, 10, _init_ss("max_nurse_loops", 3), 1, "%d", disabled=(nu_cap_form==0), key="nu_max_loops")
-
+                
                 st.markdown("**Disposition or routing**")
                 nu_route_defaults = {
                     "Doctors": float(st.session_state.get("saved_r_Nurse_to_doctors",
@@ -2275,7 +2275,8 @@ if st.session_state.wizard_step == 1:
                 nu_route = route_row_ui("Nurse", nu_route_defaults, 
                                    disabled_source=(nu_cap_form==0), fd_cap_val=fd_cap_form, nu_cap_val=nu_cap_form, 
                                    pr_cap_val=pr_cap_form, bo_cap_val=bo_cap_form)
-        
+
+            
             with st.expander("Doctors", expanded=False):
                 st.markdown("**Processing time**")
                 svc_provider = st.slider("Mean Processing time (minutes)", 0.0, 480.0, _init_ss("svc_provider", 7.0), 0.5, disabled=(pr_cap_form==0))
