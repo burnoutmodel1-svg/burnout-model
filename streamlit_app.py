@@ -318,68 +318,68 @@ def handle_role(env, task_id, s: CHCSystem, role: str):
                 s.m.log(env.now, task_id, "NU_RECHECK_DONE", f"Loop #{nurse_loops}")
 
     elif role == "Doctors":
-    if res is not None:
-        s.m.log(env.now, task_id, "PR_QUEUE", "")
-        yield from s.scheduled_service(res, "Doctors", s.p["svc_provider"])
-        s.m.log(env.now, task_id, "PR_DONE", "")
-        
-        # Combined loop counter for both types
-        total_loops = 0
-        max_loops = s.p["max_provider_loops"]
-        
-        while total_loops < max_loops:
-            # Check insufficient info first
-            if random.random() < s.p["p_provider_insuff"]:
-                total_loops += 1
-                s.m.loop_provider_insufficient += 1
-                s.m.log(env.now, task_id, "PR_INSUFF", f"Missing info loop #{total_loops}")
-                yield env.timeout(s.p["provider_insuff_delay"])
-                s.m.log(env.now, task_id, "PR_INSUFF_QUEUE", f"Loop #{total_loops}")
-                yield from s.scheduled_service(res, "Doctors", s.p["svc_provider"] * 0.5)
-                s.m.log(env.now, task_id, "PR_INSUFF_DONE", f"Loop #{total_loops}")
-            # If no insufficient info, check rework
-            elif random.random() < s.p["p_provider_rework"]:
-                total_loops += 1
-                s.m.loop_provider_rework += 1
-                s.m.log(env.now, task_id, "PR_REWORK", f"Rework loop #{total_loops}")
-                yield env.timeout(s.p["provider_rework_delay"])
-                s.m.log(env.now, task_id, "PR_REWORK_QUEUE", f"Loop #{total_loops}")
-                yield from s.scheduled_service(res, "Doctors", s.p["svc_provider"] * 0.33)
-                s.m.log(env.now, task_id, "PR_REWORK_DONE", f"Loop #{total_loops}")
-            else:
-                break  # No issues, exit loop
+        if res is not None:
+            s.m.log(env.now, task_id, "PR_QUEUE", "")
+            yield from s.scheduled_service(res, "Doctors", s.p["svc_provider"])
+            s.m.log(env.now, task_id, "PR_DONE", "")
+            
+            # Combined loop counter for both types
+            total_loops = 0
+            max_loops = s.p["max_provider_loops"]
+            
+            while total_loops < max_loops:
+                # Check insufficient info first
+                if random.random() < s.p["p_provider_insuff"]:
+                    total_loops += 1
+                    s.m.loop_provider_insufficient += 1
+                    s.m.log(env.now, task_id, "PR_INSUFF", f"Missing info loop #{total_loops}")
+                    yield env.timeout(s.p["provider_insuff_delay"])
+                    s.m.log(env.now, task_id, "PR_INSUFF_QUEUE", f"Loop #{total_loops}")
+                    yield from s.scheduled_service(res, "Doctors", s.p["svc_provider"] * 0.5)
+                    s.m.log(env.now, task_id, "PR_INSUFF_DONE", f"Loop #{total_loops}")
+                # If no insufficient info, check rework
+                elif random.random() < s.p["p_provider_rework"]:
+                    total_loops += 1
+                    s.m.loop_provider_rework += 1
+                    s.m.log(env.now, task_id, "PR_REWORK", f"Rework loop #{total_loops}")
+                    yield env.timeout(s.p["provider_rework_delay"])
+                    s.m.log(env.now, task_id, "PR_REWORK_QUEUE", f"Loop #{total_loops}")
+                    yield from s.scheduled_service(res, "Doctors", s.p["svc_provider"] * 0.33)
+                    s.m.log(env.now, task_id, "PR_REWORK_DONE", f"Loop #{total_loops}")
+                else:
+                    break  # No issues, exit loop
 
     elif role == "Other staff":
-    if res is not None:
-        s.m.log(env.now, task_id, "BO_QUEUE", "")
-        yield from s.scheduled_service(res, "Other staff", s.p["svc_backoffice"])
-        s.m.log(env.now, task_id, "BO_DONE", "")
-        
-        # Combined loop counter for both types
-        total_loops = 0
-        max_loops = s.p["max_backoffice_loops"]
-        
-        while total_loops < max_loops:
-            # Check insufficient info first
-            if random.random() < s.p["p_backoffice_insuff"]:
-                total_loops += 1
-                s.m.loop_backoffice_insufficient += 1
-                s.m.log(env.now, task_id, "BO_INSUFF", f"Missing info loop #{total_loops}")
-                yield env.timeout(s.p["backoffice_insuff_delay"])
-                s.m.log(env.now, task_id, "BO_INSUFF_QUEUE", f"Loop #{total_loops}")
-                yield from s.scheduled_service(res, "Other staff", s.p["svc_backoffice"] * 0.5)
-                s.m.log(env.now, task_id, "BO_INSUFF_DONE", f"Loop #{total_loops}")
-            # If no insufficient info, check rework
-            elif random.random() < s.p["p_backoffice_rework"]:
-                total_loops += 1
-                s.m.loop_backoffice_rework += 1
-                s.m.log(env.now, task_id, "BO_REWORK", f"Rework loop #{total_loops}")
-                yield env.timeout(s.p["backoffice_rework_delay"])
-                s.m.log(env.now, task_id, "BO_REWORK_QUEUE", f"Loop #{total_loops}")
-                yield from s.scheduled_service(res, "Other staff", s.p["svc_backoffice"] * 0.33)
-                s.m.log(env.now, task_id, "BO_REWORK_DONE", f"Loop #{total_loops}")
-            else:
-                break  # No issues, exit loop
+        if res is not None:
+            s.m.log(env.now, task_id, "BO_QUEUE", "")
+            yield from s.scheduled_service(res, "Other staff", s.p["svc_backoffice"])
+            s.m.log(env.now, task_id, "BO_DONE", "")
+            
+            # Combined loop counter for both types
+            total_loops = 0
+            max_loops = s.p["max_backoffice_loops"]
+            
+            while total_loops < max_loops:
+                # Check insufficient info first
+                if random.random() < s.p["p_backoffice_insuff"]:
+                    total_loops += 1
+                    s.m.loop_backoffice_insufficient += 1
+                    s.m.log(env.now, task_id, "BO_INSUFF", f"Missing info loop #{total_loops}")
+                    yield env.timeout(s.p["backoffice_insuff_delay"])
+                    s.m.log(env.now, task_id, "BO_INSUFF_QUEUE", f"Loop #{total_loops}")
+                    yield from s.scheduled_service(res, "Other staff", s.p["svc_backoffice"] * 0.5)
+                    s.m.log(env.now, task_id, "BO_INSUFF_DONE", f"Loop #{total_loops}")
+                # If no insufficient info, check rework
+                elif random.random() < s.p["p_backoffice_rework"]:
+                    total_loops += 1
+                    s.m.loop_backoffice_rework += 1
+                    s.m.log(env.now, task_id, "BO_REWORK", f"Rework loop #{total_loops}")
+                    yield env.timeout(s.p["backoffice_rework_delay"])
+                    s.m.log(env.now, task_id, "BO_REWORK_QUEUE", f"Loop #{total_loops}")
+                    yield from s.scheduled_service(res, "Other staff", s.p["svc_backoffice"] * 0.33)
+                    s.m.log(env.now, task_id, "BO_REWORK_DONE", f"Loop #{total_loops}")
+                else:
+                    break  # No issues, exit loop
 
     row = s.p["route_matrix"].get(role, {DONE: 1.0})
     nxt = sample_next_role(row)
