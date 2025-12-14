@@ -862,41 +862,18 @@ def plot_response_time_distribution(all_metrics: List[Metrics], p: Dict):
     # Define bins: 0-3, 3-6, 6-9, ..., up to max_bin_hours
     bin_edges_hours = np.arange(0, max_bin_hours + 3, 3)
     bin_edges_minutes = bin_edges_hours * 60
-    num_bins = len(bin_edges_hours) - 1
     
-    # Collect histogram data from each replication
-    bin_counts_per_rep = []
-    
-    for metrics in all_metrics:
-        comp_times = metrics.task_completion_time
-        arr_times = metrics.task_arrival_time
-        done_ids = set(comp_times.keys())
-        
-        if len(done_ids) > 0:
-            turnaround_times = [comp_times[k] - arr_times.get(k, comp_times[k]) for k in done_ids]
-            counts, _ = np.histogram(turnaround_times, bins=bin_edges_minutes)
-            bin_counts_per_rep.append(counts)
-        else:
-            bin_counts_per_rep.append(np.zeros(num_bins))
-    
-    # Calculate mean and std for each bin
-    bin_counts_array = np.array(bin_counts_per_rep)
-    mean_counts = np.mean(bin_counts_array, axis=0)
-    std_counts = np.std(bin_counts_array, axis=0)
+    # Aggregate all turnaround times into histogram (not per replication)
+    counts, _ = np.histogram(all_turnaround_times, bins=bin_edges_minutes)
     
     # Create x-axis positions (left edge of each bin)
     bin_left_edges = bin_edges_hours[:-1]
     bin_width = 3  # Each bin is 3 hours wide
     
     # Create histogram bars
-    bars = ax.bar(bin_left_edges, mean_counts, width=bin_width, 
+    bars = ax.bar(bin_left_edges, counts, width=bin_width, 
                   align='edge', color='#1f77b4', alpha=0.7, 
                   edgecolor='black', linewidth=0.5)
-    
-    # Add error bars at the center of each bar
-    bin_centers = bin_left_edges + bin_width / 2
-    ax.errorbar(bin_centers, mean_counts, yerr=std_counts, 
-                fmt='none', ecolor='black', capsize=3, alpha=0.6, linewidth=1)
     
     ax.set_xlabel('Hours', fontsize=11, fontweight='bold')
     ax.set_ylabel('Number of Tasks', fontsize=11, fontweight='bold')
@@ -1008,7 +985,7 @@ def plot_completion_by_day(all_metrics: List[Metrics], p: Dict):
     x = np.arange(len(categories))
     bars = ax.bar(x, means, color=colors, alpha=0.8, width=0.6)
     
-    # Add error bars
+    # Add error bars (visual only, no numbers)
     ax.errorbar(x, means, yerr=stds, fmt='none', ecolor='black', capsize=5, alpha=0.6)
     
     ax.set_xlabel('Completion', fontsize=11, fontweight='bold')
@@ -1019,13 +996,7 @@ def plot_completion_by_day(all_metrics: List[Metrics], p: Dict):
     ax.set_ylim(bottom=0)
     ax.grid(True, alpha=0.3, axis='y')
     
-    # Add value labels on bars
-    for i, (bar, mean, std) in enumerate(zip(bars, means, stds)):
-        height = bar.get_height()
-        if height > 0:
-            ax.text(bar.get_x() + bar.get_width()/2., height + std + max(0.5, ax.get_ylim()[1] * 0.02),
-                    f'{mean:.0f}±{std:.0f}',
-                    ha='center', va='bottom', fontsize=8, fontweight='bold')
+    # No value labels on bars
     
     plt.tight_layout()
     return fig
