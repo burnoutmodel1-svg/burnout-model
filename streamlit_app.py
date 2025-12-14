@@ -2205,7 +2205,7 @@ if st.session_state.wizard_step == 1:
                                       help="Average time to complete a task")
             
                 st.markdown("**Rework Loops**")
-                st.caption("Insufficient info = patient-side delays (50% reprocess time). Rework = internal errors (33% reprocess time).")
+                st.caption("Insufficient info = patient-side delays. Rework = internal errors.")
                 
                 cFDL1, cFDL2 = st.columns(2)
                 with cFDL1:
@@ -2245,7 +2245,7 @@ if st.session_state.wizard_step == 1:
                     svc_nurse = st.slider("Non-protocol Processing time (minutes)", 0.0, 40.0, _init_ss("svc_nurse", 5.0), 0.5, disabled=(nu_cap_form==0))
                 
                 st.markdown("**Rework Loops**")
-                st.caption("Insufficient info = patient-side delays (50% reprocess time). Rework = internal errors (33% reprocess time).")
+                st.caption("Insufficient info = patient-side delays. Rework = internal errors.")
                 
                 st.markdown("*Missing Info (patient-side, routes to Admin staff):*")
                 cNUL1, cNUL2 = st.columns(2)
@@ -2282,7 +2282,7 @@ if st.session_state.wizard_step == 1:
                 svc_provider = st.slider("Mean Processing time (minutes)", 0.0, 480.0, _init_ss("svc_provider", 7.0), 0.5, disabled=(pr_cap_form==0))
             
                 st.markdown("**Rework Loops**")
-                st.caption("Insufficient info = patient-side delays (50% reprocess time). Rework = internal errors (33% reprocess time).")
+                st.caption("Insufficient info = patient-side delays. Rework = internal errors.")
                 
                 st.markdown("*Missing Info (patient-side):*")
                 cPRL1, cPRL2 = st.columns(2)
@@ -2316,7 +2316,7 @@ if st.session_state.wizard_step == 1:
                 svc_backoffice = st.slider("Mean Processing time (minutes)", 0.0, 480.0, _init_ss("svc_backoffice", 5.0), 0.5, disabled=(bo_cap_form==0))
             
                 st.markdown("**Rework Loops**")
-                st.caption("Insufficient info = patient-side delays (50% reprocess time). Rework = internal errors (33% reprocess time).")
+                st.caption("Insufficient info = patient-side delays. Rework = internal errors.")
                 
                 st.markdown("*Missing Info (patient-side):*")
                 cBOL1, cBOL2 = st.columns(2)
