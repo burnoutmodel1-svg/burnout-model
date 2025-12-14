@@ -2240,7 +2240,7 @@ if st.session_state.wizard_step == 1:
                 with cFDL1:
                     p_fd_insuff = st.slider("Percent with insufficient info", 0.0, 1.0, _init_ss("p_fd_insuff", 0.25), 0.01, disabled=(fd_cap_form==0), key="fd_p_insuff")
                 with cFDL2:
-                    fd_insuff_delay = st.slider("Delay to obtain info (min)", 0.0, 480.0, _init_ss("fd_insuff_delay", 240.0), 1.0, disabled=(fd_cap_form==0), key="fd_insuff_delay")
+                    fd_insuff_delay = st.slider("Delay to obtain info (min)", 0.0, 480.0, _init_ss("fd_insuff_delay", 240.0), 1.0, disabled=(fd_cap_form==0))
             
                 st.markdown("*Rework (internal errors):*")
                 cFDL3, cFDL4 = st.columns(2)
