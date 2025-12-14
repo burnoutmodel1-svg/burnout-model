@@ -2470,9 +2470,9 @@ if st.session_state.wizard_step == 1:
 
             # Loop parameters - Administrative staff
             st.session_state.p_fd_insuff = p_fd_insuff
-            st.session_state.fd_insuff_delay = fd_insuff_delay
-            st.session_state.p_fd_rework = p_fd_rework
-            st.session_state.fd_rework_delay = fd_rework_delay
+            #st.session_state.fd_insuff_delay = fd_insuff_delay
+            #st.session_state.p_fd_rework = p_fd_rework
+            #st.session_state.fd_rework_delay = fd_rework_delay
             st.session_state.max_fd_loops = max_fd_loops
             
             # Loop parameters - Nurse
