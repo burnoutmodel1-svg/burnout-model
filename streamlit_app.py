@@ -2017,7 +2017,7 @@ def create_excel_download(all_metrics: List[Metrics], p: Dict) -> BytesIO:
 # =============================
 st.set_page_config(page_title="Community Health Center Workflow Model", layout="wide")
 st.title("Community Health Center Workflow Model")
-st.subheader("Healthcare Systems Engineering Insitute (AHRQ grant #R01HS028458)")
+st.subheader("Healthcare Systems Engineering Institute (AHRQ grant #R01HS028458)")
 st.caption("By Ines Sereno")
 
 if "wizard_step" not in st.session_state:
