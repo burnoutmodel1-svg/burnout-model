@@ -2218,8 +2218,8 @@ if st.session_state.wizard_step == 1:
                     p_fd_rework = st.slider("Percent with rework needed", 0.0, 1.0, _init_ss("p_fd_rework", 0.10), 0.01, disabled=(fd_cap_form==0), key="fd_p_rework")
                 with cFDL4:
                     fd_rework_delay = st.slider("Delay to identify rework (min)", 0.0, 240.0, _init_ss("fd_rework_delay", 60.0), 0.5, disabled=(fd_cap_form==0), key="fd_rework_delay")
-
-max_fd_loops = st.number_input("Maximum number of loops (both types combined)", 0, 10, _init_ss("max_fd_loops", 3), 1, "%d", disabled=(fd_cap_form==0), key="fd_max_loops")
+                max_fd_loops = st.number_input("Maximum number of loops (both types combined)", 0, 10, _init_ss("max_fd_loops", 3), 1, "%d", disabled=(fd_cap_form==0), key="fd_max_loops")
+                
                 st.markdown("**Disposition or routing**")
                 fd_route_defaults = {
                     "Nurse": float(st.session_state.get("saved_r_Administrative staff_to_nurse", 
