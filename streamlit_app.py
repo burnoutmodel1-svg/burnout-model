@@ -2083,6 +2083,35 @@ def _init_ss(key, default):
         st.session_state[key] = default
     return st.session_state[key]
 
+# Initialize all new insufficient info and rework delay parameters
+if "fd_insuff_delay" not in st.session_state:
+    st.session_state.fd_insuff_delay = 240.0
+if "fd_rework_delay" not in st.session_state:
+    st.session_state.fd_rework_delay = 60.0
+if "p_fd_rework" not in st.session_state:
+    st.session_state.p_fd_rework = 0.10
+
+if "nurse_insuff_delay" not in st.session_state:
+    st.session_state.nurse_insuff_delay = 240.0
+if "nurse_rework_delay" not in st.session_state:
+    st.session_state.nurse_rework_delay = 60.0
+if "p_nurse_rework" not in st.session_state:
+    st.session_state.p_nurse_rework = 0.10
+
+if "provider_insuff_delay" not in st.session_state:
+    st.session_state.provider_insuff_delay = 300.0
+if "provider_rework_delay" not in st.session_state:
+    st.session_state.provider_rework_delay = 60.0
+if "p_provider_rework" not in st.session_state:
+    st.session_state.p_provider_rework = 0.10
+
+if "backoffice_insuff_delay" not in st.session_state:
+    st.session_state.backoffice_insuff_delay = 180.0
+if "backoffice_rework_delay" not in st.session_state:
+    st.session_state.backoffice_rework_delay = 60.0
+if "p_backoffice_rework" not in st.session_state:
+    st.session_state.p_backoffice_rework = 0.10
+
 def prob_input(label: str, key: str, default: float = 0.0, help: str | None = None, disabled: bool = False) -> float:
     if key not in st.session_state:
         st.session_state[key] = f"{float(default):.2f}"
