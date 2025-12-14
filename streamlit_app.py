@@ -76,9 +76,13 @@ class Metrics:
         self.arrivals_by_role = {r: 0 for r in ROLES}
         self.service_time_sum = {r: 0.0 for r in ROLES}
         self.loop_fd_insufficient = 0
+        self.loop_fd_rework = 0
         self.loop_nurse_insufficient = 0
+        self.loop_nurse_rework = 0
         self.loop_provider_insufficient = 0
+        self.loop_provider_rework = 0
         self.loop_backoffice_insufficient = 0
+        self.loop_backoffice_rework = 0
         self.events = []
         self.task_arrival_time: Dict[str, float] = {}
         self.task_completion_time: Dict[str, float] = {}
@@ -267,15 +271,31 @@ def handle_role(env, task_id, s: CHCSystem, role: str):
             yield from s.scheduled_service(res, "Administrative staff", s.p["svc_frontdesk"])
             s.m.log(env.now, task_id, "FD_DONE", "")
             fd_loops = 0
-            while (fd_loops < s.p["max_fd_loops"]) and (random.random() < s.p["p_fd_insuff"]):
-                fd_loops += 1
-                s.m.loop_fd_insufficient += 1
-                s.m.log(env.now, task_id, "FD_INSUFF", f"Missing info loop #{fd_loops}")
-                yield env.timeout(s.p["fd_loop_delay"])
-                s.m.log(env.now, task_id, "FD_RETRY_QUEUE", f"Loop #{fd_loops}")
-                yield from s.scheduled_service(res, "Administrative staff", s.p["svc_frontdesk"])
-                s.m.log(env.now, task_id, "FD_RETRY_DONE", f"Loop #{fd_loops}")
-
+            total_loops = 0
+            max_loops = s.p["max_fd_loops"]
+            
+            while total_loops < max_loops:
+                # Check insufficient info first
+                if random.random() < s.p["p_fd_insuff"]:
+                    total_loops += 1
+                    s.m.loop_fd_insufficient += 1
+                    s.m.log(env.now, task_id, "FD_INSUFF", f"Missing info loop #{total_loops}")
+                    yield env.timeout(s.p["fd_insuff_delay"])
+                    s.m.log(env.now, task_id, "FD_INSUFF_QUEUE", f"Loop #{total_loops}")
+                    yield from s.scheduled_service(res, "Administrative staff", s.p["svc_frontdesk"] * 0.5)
+                    s.m.log(env.now, task_id, "FD_INSUFF_DONE", f"Loop #{total_loops}")
+                # If no insufficient info, check rework
+                elif random.random() < s.p["p_fd_rework"]:
+                    total_loops += 1
+                    s.m.loop_fd_rework += 1
+                    s.m.log(env.now, task_id, "FD_REWORK", f"Rework loop #{total_loops}")
+                    yield env.timeout(s.p["fd_rework_delay"])
+                    s.m.log(env.now, task_id, "FD_REWORK_QUEUE", f"Loop #{total_loops}")
+                    yield from s.scheduled_service(res, "Administrative staff", s.p["svc_frontdesk"] * 0.33)
+                    s.m.log(env.now, task_id, "FD_REWORK_DONE", f"Loop #{total_loops}")
+                else:
+                    break  # No issues, exit loop
+                    
     elif role == "Nurse":
         if res is not None:
             s.m.log(env.now, task_id, "NU_QUEUE", "")
@@ -298,34 +318,68 @@ def handle_role(env, task_id, s: CHCSystem, role: str):
                 s.m.log(env.now, task_id, "NU_RECHECK_DONE", f"Loop #{nurse_loops}")
 
     elif role == "Doctors":
-        if res is not None:
-            s.m.log(env.now, task_id, "PR_QUEUE", "")
-            yield from s.scheduled_service(res, "Doctors", s.p["svc_provider"])
-            s.m.log(env.now, task_id, "PR_DONE", "")
-            provider_loops = 0
-            while (provider_loops < s.p["max_provider_loops"]) and (random.random() < s.p["p_provider_insuff"]):
-                provider_loops += 1
+    if res is not None:
+        s.m.log(env.now, task_id, "PR_QUEUE", "")
+        yield from s.scheduled_service(res, "Doctors", s.p["svc_provider"])
+        s.m.log(env.now, task_id, "PR_DONE", "")
+        
+        # Combined loop counter for both types
+        total_loops = 0
+        max_loops = s.p["max_provider_loops"]
+        
+        while total_loops < max_loops:
+            # Check insufficient info first
+            if random.random() < s.p["p_provider_insuff"]:
+                total_loops += 1
                 s.m.loop_provider_insufficient += 1
-                s.m.log(env.now, task_id, "PR_INSUFF", f"Doctors rework loop #{provider_loops}")
-                yield env.timeout(s.p["provider_loop_delay"])
-                s.m.log(env.now, task_id, "PR_RECHECK_QUEUE", f"Loop #{provider_loops}")
-                yield from s.scheduled_service(res, "Doctors", max(0.0, 0.5 * s.p["svc_provider"]))
-                s.m.log(env.now, task_id, "PR_RECHECK_DONE", f"Loop #{provider_loops}")
+                s.m.log(env.now, task_id, "PR_INSUFF", f"Missing info loop #{total_loops}")
+                yield env.timeout(s.p["provider_insuff_delay"])
+                s.m.log(env.now, task_id, "PR_INSUFF_QUEUE", f"Loop #{total_loops}")
+                yield from s.scheduled_service(res, "Doctors", s.p["svc_provider"] * 0.5)
+                s.m.log(env.now, task_id, "PR_INSUFF_DONE", f"Loop #{total_loops}")
+            # If no insufficient info, check rework
+            elif random.random() < s.p["p_provider_rework"]:
+                total_loops += 1
+                s.m.loop_provider_rework += 1
+                s.m.log(env.now, task_id, "PR_REWORK", f"Rework loop #{total_loops}")
+                yield env.timeout(s.p["provider_rework_delay"])
+                s.m.log(env.now, task_id, "PR_REWORK_QUEUE", f"Loop #{total_loops}")
+                yield from s.scheduled_service(res, "Doctors", s.p["svc_provider"] * 0.33)
+                s.m.log(env.now, task_id, "PR_REWORK_DONE", f"Loop #{total_loops}")
+            else:
+                break  # No issues, exit loop
 
     elif role == "Other staff":
-        if res is not None:
-            s.m.log(env.now, task_id, "BO_QUEUE", "")
-            yield from s.scheduled_service(res, "Other staff", s.p["svc_backoffice"])
-            s.m.log(env.now, task_id, "BO_DONE", "")
-            bo_loops = 0
-            while (bo_loops < s.p["max_backoffice_loops"]) and (random.random() < s.p["p_backoffice_insuff"]):
-                bo_loops += 1
+    if res is not None:
+        s.m.log(env.now, task_id, "BO_QUEUE", "")
+        yield from s.scheduled_service(res, "Other staff", s.p["svc_backoffice"])
+        s.m.log(env.now, task_id, "BO_DONE", "")
+        
+        # Combined loop counter for both types
+        total_loops = 0
+        max_loops = s.p["max_backoffice_loops"]
+        
+        while total_loops < max_loops:
+            # Check insufficient info first
+            if random.random() < s.p["p_backoffice_insuff"]:
+                total_loops += 1
                 s.m.loop_backoffice_insufficient += 1
-                s.m.log(env.now, task_id, "BO_INSUFF", f"Other staff rework loop #{bo_loops}")
-                yield env.timeout(s.p["backoffice_loop_delay"])
-                s.m.log(env.now, task_id, "BO_RECHECK_QUEUE", f"Loop #{bo_loops}")
-                yield from s.scheduled_service(res, "Other staff", max(0.0, 0.5 * s.p["svc_backoffice"]))
-                s.m.log(env.now, task_id, "BO_RECHECK_DONE", f"Loop #{bo_loops}")
+                s.m.log(env.now, task_id, "BO_INSUFF", f"Missing info loop #{total_loops}")
+                yield env.timeout(s.p["backoffice_insuff_delay"])
+                s.m.log(env.now, task_id, "BO_INSUFF_QUEUE", f"Loop #{total_loops}")
+                yield from s.scheduled_service(res, "Other staff", s.p["svc_backoffice"] * 0.5)
+                s.m.log(env.now, task_id, "BO_INSUFF_DONE", f"Loop #{total_loops}")
+            # If no insufficient info, check rework
+            elif random.random() < s.p["p_backoffice_rework"]:
+                total_loops += 1
+                s.m.loop_backoffice_rework += 1
+                s.m.log(env.now, task_id, "BO_REWORK", f"Rework loop #{total_loops}")
+                yield env.timeout(s.p["backoffice_rework_delay"])
+                s.m.log(env.now, task_id, "BO_REWORK_QUEUE", f"Loop #{total_loops}")
+                yield from s.scheduled_service(res, "Other staff", s.p["svc_backoffice"] * 0.33)
+                s.m.log(env.now, task_id, "BO_REWORK_DONE", f"Loop #{total_loops}")
+            else:
+                break  # No issues, exit loop
 
     row = s.p["route_matrix"].get(role, {DONE: 1.0})
     nxt = sample_next_role(row)
@@ -2151,14 +2205,21 @@ if st.session_state.wizard_step == 1:
                                       help="Average time to complete a task")
             
                 st.markdown("**Rework Loops**")
-                cFDL1, cFDL2, cFDL3 = st.columns(3)
+                st.caption("Insufficient info = patient-side delays (50% reprocess time). Rework = internal errors (33% reprocess time).")
+                
+                cFDL1, cFDL2 = st.columns(2)
                 with cFDL1:
                     p_fd_insuff = st.slider("Percent with insufficient info", 0.0, 1.0, _init_ss("p_fd_insuff", 0.25), 0.01, disabled=(fd_cap_form==0), key="fd_p_insuff")
                 with cFDL2:
-                    max_fd_loops = st.number_input("Maximum number of loops", 0, 10, _init_ss("max_fd_loops", 3), 1, "%d", disabled=(fd_cap_form==0), key="fd_max_loops")
+                    fd_insuff_delay = st.slider("Delay to obtain info (min)", 0.0, 480.0, _init_ss("fd_insuff_delay", 240.0), 0.5, disabled=(fd_cap_form==0), key="fd_insuff_delay")
+                
+                cFDL3, cFDL4 = st.columns(2)
                 with cFDL3:
-                    fd_loop_delay = st.slider("Delay to obtain", 0.0, 480.0, _init_ss("fd_loop_delay", 240.0), 0.5, disabled=(fd_cap_form==0), key="fd_delay")
-            
+                    p_fd_rework = st.slider("Percent with rework needed", 0.0, 1.0, _init_ss("p_fd_rework", 0.10), 0.01, disabled=(fd_cap_form==0), key="fd_p_rework")
+                with cFDL4:
+                    fd_rework_delay = st.slider("Delay to identify rework (min)", 0.0, 240.0, _init_ss("fd_rework_delay", 60.0), 0.5, disabled=(fd_cap_form==0), key="fd_rework_delay")
+
+max_fd_loops = st.number_input("Maximum number of loops (both types combined)", 0, 10, _init_ss("max_fd_loops", 3), 1, "%d", disabled=(fd_cap_form==0), key="fd_max_loops")
                 st.markdown("**Disposition or routing**")
                 fd_route_defaults = {
                     "Nurse": float(st.session_state.get("saved_r_Administrative staff_to_nurse", 
@@ -2183,13 +2244,25 @@ if st.session_state.wizard_step == 1:
                 with cNS2:
                     svc_nurse = st.slider("Non-protocol Processing time (minutes)", 0.0, 40.0, _init_ss("svc_nurse", 5.0), 0.5, disabled=(nu_cap_form==0))
                 
-                st.markdown("**Rework Loops**")
+               st.markdown("**Rework Loops**")
+                st.caption("Insufficient info = patient-side delays (50% reprocess time). Rework = internal errors (33% reprocess time).")
+                
+                st.markdown("*Missing Info (patient-side, routes to Admin staff):*")
                 cNUL1, cNUL2 = st.columns(2)
                 with cNUL1:
                     p_nurse_insuff = st.slider("Percent with insufficient info", 0.0, 1.0, _init_ss("p_nurse_insuff", 0.20), 0.01, disabled=(nu_cap_form==0), key="nu_p_insuff")
                 with cNUL2:
-                    max_nurse_loops = st.number_input("Maximum number of loops", 0, 10, _init_ss("max_nurse_loops", 3), 1, "%d", disabled=(nu_cap_form==0), key="nu_max_loops")
-            
+                    nurse_insuff_delay = st.slider("Delay to obtain info (min)", 0.0, 480.0, _init_ss("nurse_insuff_delay", 240.0), 1.0, disabled=(nu_cap_form==0), key="nu_insuff_delay")
+                
+                st.markdown("*Rework (internal errors):*")
+                cNUL3, cNUL4 = st.columns(2)
+                with cNUL3:
+                    p_nurse_rework = st.slider("Percent with rework needed", 0.0, 1.0, _init_ss("p_nurse_rework", 0.10), 0.01, disabled=(nu_cap_form==0), key="nu_p_rework")
+                with cNUL4:
+                    nurse_rework_delay = st.slider("Delay to identify rework (min)", 0.0, 240.0, _init_ss("nurse_rework_delay", 60.0), 1.0, disabled=(nu_cap_form==0), key="nu_rework_delay")
+                
+                max_nurse_loops = st.number_input("Maximum number of loops (both types combined)", 0, 10, _init_ss("max_nurse_loops", 3), 1, "%d", disabled=(nu_cap_form==0), key="nu_max_loops")
+
                 st.markdown("**Disposition or routing**")
                 nu_route_defaults = {
                     "Doctors": float(st.session_state.get("saved_r_Nurse_to_doctors",
@@ -2208,14 +2281,24 @@ if st.session_state.wizard_step == 1:
                 svc_provider = st.slider("Mean Processing time (minutes)", 0.0, 480.0, _init_ss("svc_provider", 7.0), 0.5, disabled=(pr_cap_form==0))
             
                 st.markdown("**Rework Loops**")
-                cPRL1, cPRL2, cPRL3 = st.columns(3)
+                st.caption("Insufficient info = patient-side delays (50% reprocess time). Rework = internal errors (33% reprocess time).")
+                
+                st.markdown("*Missing Info (patient-side):*")
+                cPRL1, cPRL2 = st.columns(2)
                 with cPRL1:
-                    p_provider_insuff = st.slider("Probability of rework needed", 0.0, 1.0, _init_ss("p_provider_insuff", 0.15), 0.01, disabled=(pr_cap_form==0), key="pr_p_insuff")
+                    p_provider_insuff = st.slider("Percent with insufficient info", 0.0, 1.0, _init_ss("p_provider_insuff", 0.15), 0.01, disabled=(pr_cap_form==0), key="pr_p_insuff")
                 with cPRL2:
-                    max_provider_loops = st.number_input("Maximum number of loops", 0, 10, _init_ss("max_provider_loops", 3), 1, "%d", disabled=(pr_cap_form==0), key="pr_max_loops")
+                    provider_insuff_delay = st.slider("Delay to obtain info (min)", 0.0, 480.0, _init_ss("provider_insuff_delay", 300.0), 1.0, disabled=(pr_cap_form==0), key="pr_insuff_delay")
+                
+                st.markdown("*Rework (internal errors):*")
+                cPRL3, cPRL4 = st.columns(2)
                 with cPRL3:
-                    provider_loop_delay = st.slider("Delay to obtain", 0.0, 480.0, _init_ss("provider_loop_delay", 300.0), 0.5, disabled=(pr_cap_form==0), key="pr_delay")
-            
+                    p_provider_rework = st.slider("Percent with rework needed", 0.0, 1.0, _init_ss("p_provider_rework", 0.10), 0.01, disabled=(pr_cap_form==0), key="pr_p_rework")
+                with cPRL4:
+                    provider_rework_delay = st.slider("Delay to identify rework (min)", 0.0, 240.0, _init_ss("provider_rework_delay", 60.0), 1.0, disabled=(pr_cap_form==0), key="pr_rework_delay")
+                
+                max_provider_loops = st.number_input("Maximum number of loops (both types combined)", 0, 10, _init_ss("max_provider_loops", 3), 1, "%d", disabled=(pr_cap_form==0), key="pr_max_loops")
+
                 st.markdown("**Disposition or routing**")
                 pr_route_defaults = {
                     "Other staff": float(st.session_state.get("saved_r_Doctors_to_other_staff",
@@ -2232,14 +2315,24 @@ if st.session_state.wizard_step == 1:
                 svc_backoffice = st.slider("Mean Processing time (minutes)", 0.0, 480.0, _init_ss("svc_backoffice", 5.0), 0.5, disabled=(bo_cap_form==0))
             
                 st.markdown("**Rework Loops**")
-                cBOL1, cBOL2, cBOL3 = st.columns(3)
+                st.caption("Insufficient info = patient-side delays (50% reprocess time). Rework = internal errors (33% reprocess time).")
+                
+                st.markdown("*Missing Info (patient-side):*")
+                cBOL1, cBOL2 = st.columns(2)
                 with cBOL1:
-                    p_backoffice_insuff = st.slider("Probability of rework needed", 0.0, 1.0, _init_ss("p_backoffice_insuff", 0.18), 0.01, disabled=(bo_cap_form==0), key="bo_p_insuff")
+                    p_backoffice_insuff = st.slider("Percent with insufficient info", 0.0, 1.0, _init_ss("p_backoffice_insuff", 0.18), 0.01, disabled=(bo_cap_form==0), key="bo_p_insuff")
                 with cBOL2:
-                    max_backoffice_loops = st.number_input("Maximum number of loops", 0, 10, _init_ss("max_backoffice_loops", 3), 1, "%d", disabled=(bo_cap_form==0), key="bo_max_loops")
+                    backoffice_insuff_delay = st.slider("Delay to obtain info (min)", 0.0, 480.0, _init_ss("backoffice_insuff_delay", 180.0), 1.0, disabled=(bo_cap_form==0), key="bo_insuff_delay")
+                
+                st.markdown("*Rework (internal errors):*")
+                cBOL3, cBOL4 = st.columns(2)
                 with cBOL3:
-                    backoffice_loop_delay = st.slider("Delay to obtain", 0.0, 480.0, _init_ss("backoffice_loop_delay", 180.0), 0.5, disabled=(bo_cap_form==0), key="bo_delay")
-            
+                    p_backoffice_rework = st.slider("Percent with rework needed", 0.0, 1.0, _init_ss("p_backoffice_rework", 0.10), 0.01, disabled=(bo_cap_form==0), key="bo_p_rework")
+                with cBOL4:
+                    backoffice_rework_delay = st.slider("Delay to identify rework (min)", 0.0, 240.0, _init_ss("backoffice_rework_delay", 60.0), 1.0, disabled=(bo_cap_form==0), key="bo_rework_delay")
+                
+                max_backoffice_loops = st.number_input("Maximum number of loops (both types combined)", 0, 10, _init_ss("max_backoffice_loops", 3), 1, "%d", disabled=(bo_cap_form==0), key="bo_max_loops")
+
                 st.markdown("**Disposition or routing**")
                 bo_route_defaults = {
                     "Administrative staff": float(st.session_state.get("saved_r_Other staff_to_administrative_staff",
@@ -2304,24 +2397,33 @@ if st.session_state.wizard_step == 1:
             st.session_state.svc_provider = svc_provider
             st.session_state.svc_backoffice = svc_backoffice
 
-            # Loop parameters - Front desk
+            # Loop parameters - Administrative staff
             st.session_state.p_fd_insuff = p_fd_insuff
+            st.session_state.fd_insuff_delay = fd_insuff_delay
+            st.session_state.p_fd_rework = p_fd_rework
+            st.session_state.fd_rework_delay = fd_rework_delay
             st.session_state.max_fd_loops = max_fd_loops
-            st.session_state.fd_loop_delay = fd_loop_delay
-
+            
             # Loop parameters - Nurse
             st.session_state.p_nurse_insuff = p_nurse_insuff
+            st.session_state.nurse_insuff_delay = nurse_insuff_delay
+            st.session_state.p_nurse_rework = p_nurse_rework
+            st.session_state.nurse_rework_delay = nurse_rework_delay
             st.session_state.max_nurse_loops = max_nurse_loops
-    
+            
             # Loop parameters - Provider
             st.session_state.p_provider_insuff = p_provider_insuff
+            st.session_state.provider_insuff_delay = provider_insuff_delay
+            st.session_state.p_provider_rework = p_provider_rework
+            st.session_state.provider_rework_delay = provider_rework_delay
             st.session_state.max_provider_loops = max_provider_loops
-            st.session_state.provider_loop_delay = provider_loop_delay
-
+            
             # Loop parameters - Back office
             st.session_state.p_backoffice_insuff = p_backoffice_insuff
+            st.session_state.backoffice_insuff_delay = backoffice_insuff_delay
+            st.session_state.p_backoffice_rework = p_backoffice_rework
+            st.session_state.backoffice_rework_delay = backoffice_rework_delay
             st.session_state.max_backoffice_loops = max_backoffice_loops
-            st.session_state.backoffice_loop_delay = backoffice_loop_delay
     
             # NEW: Save routing values explicitly
             # Administrative staff routing
@@ -2392,10 +2494,14 @@ if st.session_state.wizard_step == 1:
                     "incompletion": w_incompletion,
                     "throughput_deficit": w_throughput_deficit
                 },
-                p_fd_insuff=p_fd_insuff, max_fd_loops=max_fd_loops, fd_loop_delay=fd_loop_delay,
-                p_nurse_insuff=p_nurse_insuff, max_nurse_loops=max_nurse_loops,
-                p_provider_insuff=p_provider_insuff, max_provider_loops=max_provider_loops, provider_loop_delay=provider_loop_delay,
-                p_backoffice_insuff=p_backoffice_insuff, max_backoffice_loops=max_backoffice_loops, backoffice_loop_delay=backoffice_loop_delay,
+                p_fd_insuff=p_fd_insuff, p_fd_rework=p_fd_rework, 
+                fd_insuff_delay=fd_insuff_delay, fd_rework_delay=fd_rework_delay, max_fd_loops=max_fd_loops,
+                p_nurse_insuff=p_nurse_insuff, p_nurse_rework=p_nurse_rework,
+                nurse_rework_delay=nurse_rework_delay, max_nurse_loops=max_nurse_loops,
+                p_provider_insuff=p_provider_insuff, p_provider_rework=p_provider_rework, 
+                provider_insuff_delay=provider_insuff_delay, provider_rework_delay=provider_rework_delay, max_provider_loops=max_provider_loops,
+                p_backoffice_insuff=p_backoffice_insuff, p_backoffice_rework=p_backoffice_rework, 
+                backoffice_insuff_delay=backoffice_insuff_delay, backoffice_rework_delay=backoffice_rework_delay, max_backoffice_loops=max_backoffice_loops, 
                 p_protocol=p_protocol, route_matrix=route
             )
             st.session_state.design_saved = True
