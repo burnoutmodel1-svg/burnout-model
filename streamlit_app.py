@@ -905,36 +905,17 @@ def plot_response_time_distribution(all_metrics: List[Metrics], p: Dict):
     
 def plot_completion_by_day(all_metrics: List[Metrics], p: Dict):
     """
-    Bar chart showing number of tasks completed same day, +1 day, +2 days, etc. (auto-scaling).
+    Bar chart showing number of tasks completed same day, +1 day, +2 days, etc. (matches simulation length).
     """
-    fig, ax = plt.subplots(figsize=(6, 4), dpi=100)
+    fig, ax = plt.subplots(figsize=(8, 4), dpi=100)
     
-    # First pass: determine max days delay
-    max_days_delay = 0
-    for metrics in all_metrics:
-        comp_times = metrics.task_completion_time
-        arr_times = metrics.task_arrival_time
-        done_ids = set(comp_times.keys())
-        
-        for task_id in done_ids:
-            arrival_time = arr_times.get(task_id, comp_times[task_id])
-            completion_time = comp_times[task_id]
-            
-            arrival_day = int(arrival_time // DAY_MIN)
-            completion_day = int(completion_time // DAY_MIN)
-            days_diff = completion_day - arrival_day
-            
-            max_days_delay = max(max_days_delay, days_diff)
+    # Determine simulation length in days
+    sim_days = int(p["sim_minutes"] // DAY_MIN)
     
-    # Create categories dynamically
+    # Create categories based on simulation length
     categories = ['Same Day']
-    for i in range(1, max_days_delay + 1):
+    for i in range(1, sim_days):
         categories.append(f'+{i} Day{"s" if i > 1 else ""}')
-    
-    # If no delays beyond same day, ensure we have at least a few categories
-    if len(categories) < 5:
-        for i in range(len(categories), 5):
-            categories.append(f'+{i} Day{"s" if i > 1 else ""}')
     
     # Collect counts from each replication
     counts_per_rep = {cat: [] for cat in categories}
@@ -959,7 +940,7 @@ def plot_completion_by_day(all_metrics: List[Metrics], p: Dict):
             elif days_diff < len(categories):
                 category_counts[categories[days_diff]] += 1
             else:
-                # If somehow beyond our categories, count in last category
+                # If beyond simulation days, count in last category
                 category_counts[categories[-1]] += 1
         
         for cat in categories:
@@ -971,23 +952,21 @@ def plot_completion_by_day(all_metrics: List[Metrics], p: Dict):
     
     # Create color gradient from green (good) to red (bad)
     num_categories = len(categories)
-    if num_categories <= 5:
-        colors = ['#2ecc71', '#f39c12', '#e67e22', '#e74c3c', '#c0392b'][:num_categories]
-    else:
-        # Create gradient for more categories
-        colors = []
-        for i in range(num_categories):
-            if i == 0:
-                colors.append('#2ecc71')  # Green for same day
+    colors = []
+    for i in range(num_categories):
+        if i == 0:
+            colors.append('#2ecc71')  # Green for same day
+        else:
+            # Gradient from yellow to red based on position
+            ratio = (i - 1) / max(1, num_categories - 2)
+            if ratio < 0.25:
+                colors.append('#f39c12')  # Yellow
+            elif ratio < 0.50:
+                colors.append('#e67e22')  # Orange
+            elif ratio < 0.75:
+                colors.append('#e74c3c')  # Red
             else:
-                # Gradient from yellow to red
-                ratio = (i - 1) / max(1, num_categories - 2)
-                if ratio < 0.33:
-                    colors.append('#f39c12')  # Yellow
-                elif ratio < 0.67:
-                    colors.append('#e67e22')  # Orange
-                else:
-                    colors.append('#e74c3c')  # Red
+                colors.append('#c0392b')  # Dark red
     
     x = np.arange(len(categories))
     bars = ax.bar(x, means, color=colors, alpha=0.8, width=0.6)
@@ -999,11 +978,15 @@ def plot_completion_by_day(all_metrics: List[Metrics], p: Dict):
     ax.set_ylabel('Number of Tasks', fontsize=11, fontweight='bold')
     ax.set_title('Delays in Days', fontsize=12, fontweight='bold')
     ax.set_xticks(x)
-    ax.set_xticklabels(categories, fontsize=9, rotation=45, ha='right')
+    
+    # Rotate labels if too many categories
+    if num_categories > 15:
+        ax.set_xticklabels(categories, fontsize=8, rotation=45, ha='right')
+    else:
+        ax.set_xticklabels(categories, fontsize=9, rotation=45, ha='right')
+    
     ax.set_ylim(bottom=0)
     ax.grid(True, alpha=0.3, axis='y')
-    
-    # No value labels on bars
     
     plt.tight_layout()
     return fig
