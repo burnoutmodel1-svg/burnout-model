@@ -834,7 +834,7 @@ def plot_daily_throughput(all_metrics: List[Metrics], p: Dict, active_roles: Lis
     
 def plot_response_time_distribution(all_metrics: List[Metrics], p: Dict):
     """
-    Histogram showing distribution of task completion times in 3-hour bins, capped at 336 hours (14 days).
+    Histogram showing distribution of task completion times in 3-hour bins, auto-scaling up to simulation length.
     """
     fig, ax = plt.subplots(figsize=(10, 5), dpi=100)
     
@@ -853,12 +853,15 @@ def plot_response_time_distribution(all_metrics: List[Metrics], p: Dict):
         st.warning("No completed tasks to plot")
         return fig
     
-    # Convert to hours and cap at 336 hours (14 days)
-    all_turnaround_hours = [min(t / 60.0, 336) for t in all_turnaround_times]
+    # Determine simulation length in days and convert to hours
+    sim_days = int(p["sim_minutes"] // DAY_MIN)
+    max_hours = min(sim_days * 24, 336)  # Cap at 14 days (336 hours) only if sim is longer
     
-    # Define bins: 3-hour bins up to 336 hours
-    # 0-3, 3-6, 6-9, ..., 333-336
-    bin_edges_hours = np.arange(0, 337, 3)
+    # Convert to hours and cap at max_hours
+    all_turnaround_hours = [min(t / 60.0, max_hours) for t in all_turnaround_times]
+    
+    # Define bins: 3-hour bins up to max_hours
+    bin_edges_hours = np.arange(0, max_hours + 3, 3)
     
     # Create histogram
     counts, _ = np.histogram(all_turnaround_hours, bins=bin_edges_hours)
@@ -874,25 +877,32 @@ def plot_response_time_distribution(all_metrics: List[Metrics], p: Dict):
     
     ax.set_xlabel('Hours', fontsize=11, fontweight='bold')
     ax.set_ylabel('Number of Tasks', fontsize=11, fontweight='bold')
-    ax.set_title('Distribution of Task Completion Times (capped at 14 days)', fontsize=12, fontweight='bold')
-    ax.set_xlim(0, 336)
+    
+    # Adaptive title based on whether capped or not
+    if sim_days > 14:
+        ax.set_title('Distribution of Task Completion Times (capped at 14 days)', fontsize=12, fontweight='bold')
+    else:
+        ax.set_title('Distribution of Task Completion Times', fontsize=12, fontweight='bold')
+    
+    ax.set_xlim(0, max_hours)
     ax.set_ylim(bottom=0)
     
     # Format y-axis to use comma separator for thousands
     ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'{int(x):,}'))
     
     # Set x-axis ticks every 24 hours (1 day) to keep it readable
-    ax.set_xticks(np.arange(0, 337, 24))
+    ax.set_xticks(np.arange(0, max_hours + 24, 24))
     
     # Add vertical lines at day boundaries for clarity
-    for day in range(1, 15):
+    num_days = int(max_hours // 24)
+    for day in range(1, num_days + 1):
         ax.axvline(x=day*24, color='gray', linestyle='--', linewidth=0.5, alpha=0.3)
     
     ax.grid(True, alpha=0.3, linestyle=':', axis='y')
     
     plt.tight_layout()
     return fig
-
+    
 def plot_completion_by_day(all_metrics: List[Metrics], p: Dict):
     """
     Bar chart showing number of tasks completed same day, +1 day, +2 days, etc. (auto-scaling).
