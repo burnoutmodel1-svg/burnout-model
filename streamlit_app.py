@@ -834,12 +834,33 @@ def plot_daily_throughput(all_metrics: List[Metrics], p: Dict, active_roles: Lis
     
 def plot_response_time_distribution(all_metrics: List[Metrics], p: Dict):
     """
-    Histogram showing distribution of task completion times in 3-hour bins up to 48 hours.
+    Histogram showing distribution of task completion times in 3-hour bins, auto-scaling to max observed time.
     """
     fig, ax = plt.subplots(figsize=(8, 4), dpi=100)
     
-    # Define bins: 0-3, 3-6, 6-9, ..., 45-48 hours
-    bin_edges_hours = np.arange(0, 51, 3)  # 0, 3, 6, 9, ..., 48
+    # Collect all turnaround times to determine max
+    all_turnaround_times = []
+    for metrics in all_metrics:
+        comp_times = metrics.task_completion_time
+        arr_times = metrics.task_arrival_time
+        done_ids = set(comp_times.keys())
+        
+        if len(done_ids) > 0:
+            turnaround_times = [comp_times[k] - arr_times.get(k, comp_times[k]) for k in done_ids]
+            all_turnaround_times.extend(turnaround_times)
+    
+    if not all_turnaround_times:
+        st.warning("No completed tasks to plot")
+        return fig
+    
+    # Determine max turnaround time in hours and round up to nearest 3-hour bin
+    max_time_minutes = max(all_turnaround_times)
+    max_time_hours = max_time_minutes / 60.0
+    max_bin_hours = int(np.ceil(max_time_hours / 3.0) * 3)  # Round up to nearest 3
+    max_bin_hours = max(max_bin_hours, 48)  # Minimum of 48 hours
+    
+    # Define bins: 0-3, 3-6, 6-9, ..., up to max_bin_hours
+    bin_edges_hours = np.arange(0, max_bin_hours + 3, 3)
     bin_edges_minutes = bin_edges_hours * 60
     num_bins = len(bin_edges_hours) - 1
     
@@ -880,11 +901,18 @@ def plot_response_time_distribution(all_metrics: List[Metrics], p: Dict):
     ax.set_xlabel('Hours', fontsize=11, fontweight='bold')
     ax.set_ylabel('Number of Tasks', fontsize=11, fontweight='bold')
     ax.set_title('Distribution of Task Completion Times', fontsize=12, fontweight='bold')
-    ax.set_xlim(0, 48)
+    ax.set_xlim(0, max_bin_hours)
     ax.set_ylim(bottom=0)
     
-    # Set x-axis ticks to show every 6 hours
-    ax.set_xticks(np.arange(0, 49, 6))
+    # Set x-axis ticks adaptively
+    if max_bin_hours <= 48:
+        tick_interval = 6
+    elif max_bin_hours <= 96:
+        tick_interval = 12
+    else:
+        tick_interval = 24
+    
+    ax.set_xticks(np.arange(0, max_bin_hours + 1, tick_interval))
     
     ax.grid(True, alpha=0.3, linestyle=':', axis='y')
     
@@ -893,11 +921,36 @@ def plot_response_time_distribution(all_metrics: List[Metrics], p: Dict):
 
 def plot_completion_by_day(all_metrics: List[Metrics], p: Dict):
     """
-    Bar chart showing number of tasks completed same day, +1 day, +2 days, +3 days.
+    Bar chart showing number of tasks completed same day, +1 day, +2 days, etc. (auto-scaling).
     """
     fig, ax = plt.subplots(figsize=(6, 4), dpi=100)
     
-    categories = ['Same Day', '+1 Day', '+2 Days', '+3 Days', '+4+ Days']
+    # First pass: determine max days delay
+    max_days_delay = 0
+    for metrics in all_metrics:
+        comp_times = metrics.task_completion_time
+        arr_times = metrics.task_arrival_time
+        done_ids = set(comp_times.keys())
+        
+        for task_id in done_ids:
+            arrival_time = arr_times.get(task_id, comp_times[task_id])
+            completion_time = comp_times[task_id]
+            
+            arrival_day = int(arrival_time // DAY_MIN)
+            completion_day = int(completion_time // DAY_MIN)
+            days_diff = completion_day - arrival_day
+            
+            max_days_delay = max(max_days_delay, days_diff)
+    
+    # Create categories dynamically
+    categories = ['Same Day']
+    for i in range(1, max_days_delay + 1):
+        categories.append(f'+{i} Day{"s" if i > 1 else ""}')
+    
+    # If no delays beyond same day, ensure we have at least a few categories
+    if len(categories) < 5:
+        for i in range(len(categories), 5):
+            categories.append(f'+{i} Day{"s" if i > 1 else ""}')
     
     # Collect counts from each replication
     counts_per_rep = {cat: [] for cat in categories}
@@ -919,14 +972,11 @@ def plot_completion_by_day(all_metrics: List[Metrics], p: Dict):
             
             if days_diff == 0:
                 category_counts['Same Day'] += 1
-            elif days_diff == 1:
-                category_counts['+1 Day'] += 1
-            elif days_diff == 2:
-                category_counts['+2 Days'] += 1
-            elif days_diff == 3:
-                category_counts['+3 Days'] += 1
+            elif days_diff < len(categories):
+                category_counts[categories[days_diff]] += 1
             else:
-                category_counts['+4+ Days'] += 1
+                # If somehow beyond our categories, count in last category
+                category_counts[categories[-1]] += 1
         
         for cat in categories:
             counts_per_rep[cat].append(category_counts[cat])
@@ -935,8 +985,25 @@ def plot_completion_by_day(all_metrics: List[Metrics], p: Dict):
     means = [np.mean(counts_per_rep[cat]) for cat in categories]
     stds = [np.std(counts_per_rep[cat]) for cat in categories]
     
-    # Color gradient from green (good) to red (bad)
-    colors = ['#2ecc71', '#f39c12', '#e67e22', '#e74c3c', '#c0392b']
+    # Create color gradient from green (good) to red (bad)
+    num_categories = len(categories)
+    if num_categories <= 5:
+        colors = ['#2ecc71', '#f39c12', '#e67e22', '#e74c3c', '#c0392b'][:num_categories]
+    else:
+        # Create gradient for more categories
+        colors = []
+        for i in range(num_categories):
+            if i == 0:
+                colors.append('#2ecc71')  # Green for same day
+            else:
+                # Gradient from yellow to red
+                ratio = (i - 1) / max(1, num_categories - 2)
+                if ratio < 0.33:
+                    colors.append('#f39c12')  # Yellow
+                elif ratio < 0.67:
+                    colors.append('#e67e22')  # Orange
+                else:
+                    colors.append('#e74c3c')  # Red
     
     x = np.arange(len(categories))
     bars = ax.bar(x, means, color=colors, alpha=0.8, width=0.6)
@@ -948,7 +1015,7 @@ def plot_completion_by_day(all_metrics: List[Metrics], p: Dict):
     ax.set_ylabel('Number of Tasks', fontsize=11, fontweight='bold')
     ax.set_title('Delays in Days', fontsize=12, fontweight='bold')
     ax.set_xticks(x)
-    ax.set_xticklabels(categories, fontsize=9)
+    ax.set_xticklabels(categories, fontsize=9, rotation=45, ha='right')
     ax.set_ylim(bottom=0)
     ax.grid(True, alpha=0.3, axis='y')
     
@@ -956,7 +1023,7 @@ def plot_completion_by_day(all_metrics: List[Metrics], p: Dict):
     for i, (bar, mean, std) in enumerate(zip(bars, means, stds)):
         height = bar.get_height()
         if height > 0:
-            ax.text(bar.get_x() + bar.get_width()/2., height + std + 2,
+            ax.text(bar.get_x() + bar.get_width()/2., height + std + max(0.5, ax.get_ylim()[1] * 0.02),
                     f'{mean:.0f}±{std:.0f}',
                     ha='center', va='bottom', fontsize=8, fontweight='bold')
     
