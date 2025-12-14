@@ -880,6 +880,7 @@ def plot_response_time_distribution(all_metrics: List[Metrics], p: Dict):
     ax.set_title('Distribution of Task Completion Times', fontsize=12, fontweight='bold')
     ax.set_xlim(0, max_bin_hours)
     ax.set_ylim(bottom=0)
+    ax.tick_params(axis='y', labelrotation=0, labelsize=9)
     
     # Set x-axis ticks adaptively
     if max_bin_hours <= 48:
