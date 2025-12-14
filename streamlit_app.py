@@ -834,11 +834,11 @@ def plot_daily_throughput(all_metrics: List[Metrics], p: Dict, active_roles: Lis
     
 def plot_response_time_distribution(all_metrics: List[Metrics], p: Dict):
     """
-    Histogram showing distribution of task completion times in 3-hour bins, auto-scaling to max observed time.
+    Histogram showing distribution of task completion times in 3-hour bins, capped at 336 hours (14 days).
     """
-    fig, ax = plt.subplots(figsize=(8, 4), dpi=100)
+    fig, ax = plt.subplots(figsize=(10, 5), dpi=100)
     
-    # Collect all turnaround times to determine max
+    # Collect all turnaround times across ALL replications
     all_turnaround_times = []
     for metrics in all_metrics:
         comp_times = metrics.task_completion_time
@@ -853,44 +853,40 @@ def plot_response_time_distribution(all_metrics: List[Metrics], p: Dict):
         st.warning("No completed tasks to plot")
         return fig
     
-    # Determine max turnaround time in hours and round up to nearest 3-hour bin
-    max_time_minutes = max(all_turnaround_times)
-    max_time_hours = max_time_minutes / 60.0
-    max_bin_hours = int(np.ceil(max_time_hours / 3.0) * 3)  # Round up to nearest 3
-    max_bin_hours = max(max_bin_hours, 48)  # Minimum of 48 hours
+    # Convert to hours and cap at 336 hours (14 days)
+    all_turnaround_hours = [min(t / 60.0, 336) for t in all_turnaround_times]
     
-    # Define bins: 0-3, 3-6, 6-9, ..., up to max_bin_hours
-    bin_edges_hours = np.arange(0, max_bin_hours + 3, 3)
-    bin_edges_minutes = bin_edges_hours * 60
+    # Define bins: 3-hour bins up to 336 hours
+    # 0-3, 3-6, 6-9, ..., 333-336
+    bin_edges_hours = np.arange(0, 337, 3)
     
-    # Aggregate all turnaround times into histogram (not per replication)
-    counts, _ = np.histogram(all_turnaround_times, bins=bin_edges_minutes)
+    # Create histogram
+    counts, _ = np.histogram(all_turnaround_hours, bins=bin_edges_hours)
     
     # Create x-axis positions (left edge of each bin)
     bin_left_edges = bin_edges_hours[:-1]
     bin_width = 3  # Each bin is 3 hours wide
     
     # Create histogram bars
-    bars = ax.bar(bin_left_edges, counts, width=bin_width, 
-                  align='edge', color='#1f77b4', alpha=0.7, 
-                  edgecolor='black', linewidth=0.5)
+    ax.bar(bin_left_edges, counts, width=bin_width, 
+           align='edge', color='#1f77b4', alpha=0.7, 
+           edgecolor='black', linewidth=0.5)
     
     ax.set_xlabel('Hours', fontsize=11, fontweight='bold')
     ax.set_ylabel('Number of Tasks', fontsize=11, fontweight='bold')
-    ax.set_title('Distribution of Task Completion Times', fontsize=12, fontweight='bold')
-    ax.set_xlim(0, max_bin_hours)
+    ax.set_title('Distribution of Task Completion Times (capped at 14 days)', fontsize=12, fontweight='bold')
+    ax.set_xlim(0, 336)
     ax.set_ylim(bottom=0)
-    ax.tick_params(axis='y', labelrotation=0, labelsize=9)
     
-    # Set x-axis ticks adaptively
-    if max_bin_hours <= 48:
-        tick_interval = 6
-    elif max_bin_hours <= 96:
-        tick_interval = 12
-    else:
-        tick_interval = 24
+    # Format y-axis to use comma separator for thousands
+    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'{int(x):,}'))
     
-    ax.set_xticks(np.arange(0, max_bin_hours + 1, tick_interval))
+    # Set x-axis ticks every 24 hours (1 day) to keep it readable
+    ax.set_xticks(np.arange(0, 337, 24))
+    
+    # Add vertical lines at day boundaries for clarity
+    for day in range(1, 15):
+        ax.axvline(x=day*24, color='gray', linestyle='--', linewidth=0.5, alpha=0.3)
     
     ax.grid(True, alpha=0.3, linestyle=':', axis='y')
     
