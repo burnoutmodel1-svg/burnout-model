@@ -2267,28 +2267,28 @@ if st.session_state.wizard_step == 1:
                     st.warning("All weights are 0 - burnout scores will be 0")
         
             with st.expander("Administrative staff", expanded=False):
-            st.markdown("**Processing time**")
-            svc_frontdesk = st.slider("Mean Processing time (minutes)", 0.0, 30.0, _init_ss("svc_frontdesk", 3.0), 0.5, disabled=(fd_cap_form==0),
-                                  help="Average time to complete a task")
-        
-            st.markdown("**Rework Loops**")
-            st.caption("Insufficient info = patient-side delays (50% reprocess time). Rework = internal errors (33% reprocess time).")
-        
-            st.markdown("*Missing Info (patient-side):*")
-            cFDL1, cFDL2 = st.columns(2)
-            with cFDL1:
-                p_fd_insuff = st.slider("Percent with insufficient info", 0.0, 1.0, _init_ss("p_fd_insuff", 0.25), 0.01, disabled=(fd_cap_form==0), key="fd_p_insuff")
-            with cFDL2:
-                fd_insuff_delay = st.slider("Delay to obtain info (min)", 0.0, 480.0, _init_ss("fd_insuff_delay", 240.0), 1.0, disabled=(fd_cap_form==0), key="fd_insuff_delay")
-        
-            st.markdown("*Rework (internal errors):*")
-            cFDL3, cFDL4 = st.columns(2)
-            with cFDL3:
-                p_fd_rework = st.slider("Percent with rework needed", 0.0, 1.0, _init_ss("p_fd_rework", 0.10), 0.01, disabled=(fd_cap_form==0), key="fd_p_rework")
-            with cFDL4:
-                fd_rework_delay = st.slider("Delay to identify rework (min)", 0.0, 240.0, _init_ss("fd_rework_delay", 60.0), 1.0, disabled=(fd_cap_form==0), key="fd_rework_delay")
-        
-            max_fd_loops = st.number_input("Maximum number of loops (both types combined)", 0, 10, _init_ss("max_fd_loops", 3), 1, "%d", disabled=(fd_cap_form==0), key="fd_max_loops")
+                st.markdown("**Processing time**")
+                svc_frontdesk = st.slider("Mean Processing time (minutes)", 0.0, 30.0, _init_ss("svc_frontdesk", 3.0), 0.5, disabled=(fd_cap_form==0),
+                                      help="Average time to complete a task")
+            
+                st.markdown("**Rework Loops**")
+                st.caption("Insufficient info = patient-side delays (50% reprocess time). Rework = internal errors (33% reprocess time).")
+            
+                st.markdown("*Missing Info (patient-side):*")
+                cFDL1, cFDL2 = st.columns(2)
+                with cFDL1:
+                    p_fd_insuff = st.slider("Percent with insufficient info", 0.0, 1.0, _init_ss("p_fd_insuff", 0.25), 0.01, disabled=(fd_cap_form==0), key="fd_p_insuff")
+                with cFDL2:
+                    fd_insuff_delay = st.slider("Delay to obtain info (min)", 0.0, 480.0, _init_ss("fd_insuff_delay", 240.0), 1.0, disabled=(fd_cap_form==0), key="fd_insuff_delay")
+            
+                st.markdown("*Rework (internal errors):*")
+                cFDL3, cFDL4 = st.columns(2)
+                with cFDL3:
+                    p_fd_rework = st.slider("Percent with rework needed", 0.0, 1.0, _init_ss("p_fd_rework", 0.10), 0.01, disabled=(fd_cap_form==0), key="fd_p_rework")
+                with cFDL4:
+                    fd_rework_delay = st.slider("Delay to identify rework (min)", 0.0, 240.0, _init_ss("fd_rework_delay", 60.0), 1.0, disabled=(fd_cap_form==0), key="fd_rework_delay")
+            
+                max_fd_loops = st.number_input("Maximum number of loops (both types combined)", 0, 10, _init_ss("max_fd_loops", 3), 1, "%d", disabled=(fd_cap_form==0), key="fd_max_loops")
     
                 st.markdown("**Disposition or routing**")
                 fd_route_defaults = {
