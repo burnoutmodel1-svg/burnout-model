@@ -998,7 +998,7 @@ def plot_daily_completion_rate(all_metrics: List[Metrics], p: Dict, active_roles
     Incompletion burnout = 100 - completion rate shown here.
     """
     fig, ax = plt.subplots(figsize=(8, 4), dpi=100)
-    colors = {'Administrative staff': '#1f77b4', 'Nurse': '#ff7f0e', 'Doctors': '#2ca02c', 'Other staff': '#d62728'}
+    colors = {'Administrative staff': '#1f77b4', 'Nurses': '#ff7f0e', 'Doctors': '#2ca02c', 'Other staff': '#d62728'}
     
     num_days = max(1, int(p["sim_minutes"] // DAY_MIN))
     open_minutes_per_day = p["open_minutes"]
@@ -1042,8 +1042,7 @@ def plot_daily_completion_rate(all_metrics: List[Metrics], p: Dict, active_roles
         x = np.arange(1, num_days + 1)
         
         # Plot line for this role
-        ax.plot(x, means, color=colors.get(role, '#333333'), 
-               linewidth=2.5, marker='o', markersize=6, label=role, alpha=0.9)
+        ax.plot(x, means, color=colors.get('Nurses' if role == 'Nurse' else role, '#333333'), linewidth=2.5, marker='o', markersize=6, label='Nurses' if role == 'Nurse' else role, alpha=0.9)
         
         # Add confidence band
         upper = [means[i] + stds[i] for i in range(num_days)]
@@ -1074,7 +1073,7 @@ def plot_daily_workload(all_metrics: List[Metrics], p: Dict, active_roles: List[
     Line graph showing daily task arrivals by role with utilization-based burnout thresholds.
     """
     fig, ax = plt.subplots(figsize=(8, 4), dpi=100)
-    colors = {'Administrative staff': '#1f77b4', 'Nurse': '#ff7f0e', 'Doctors': '#2ca02c', 'Other staff': '#d62728'}
+    colors = {'Administrative staff': '#1f77b4', 'Nurses': '#ff7f0e', 'Doctors': '#2ca02c', 'Other staff': '#d62728'}
     
     num_days = max(1, int(p["sim_minutes"] // DAY_MIN))
     
@@ -1101,8 +1100,7 @@ def plot_daily_workload(all_metrics: List[Metrics], p: Dict, active_roles: List[
         x = np.arange(1, num_days + 1)
         
         # Plot line
-        ax.plot(x, means, color=colors.get(role, '#333333'), 
-               linewidth=2.5, marker='o', markersize=6, label=role, alpha=0.9)
+        ax.plot(x, means, color=colors.get('Nurses' if role == 'Nurse' else role, '#333333'), linewidth=2.5, marker='o', markersize=6, label='Nurses' if role == 'Nurse' else role, alpha=0.9)
         
         # Add confidence band
         upper = [means[i] + stds[i] for i in range(num_days)]
@@ -1138,7 +1136,7 @@ def plot_burnout_over_days(all_metrics: List[Metrics], p: Dict, active_roles: Li
     Each day's burnout is calculated based ONLY on that day's activity.
     """
     fig, ax = plt.subplots(figsize=(8, 4), dpi=100)
-    colors = {'Administrative staff': '#1f77b4', 'Nurse': '#ff7f0e', 'Doctors': '#2ca02c', 'Other staff': '#d62728'}
+    colors = {'Administrative staff': '#1f77b4', 'Nurses': '#ff7f0e', 'Doctors': '#2ca02c', 'Other staff': '#d62728'}
     
     num_days = max(1, int(p["sim_minutes"] // DAY_MIN))
     open_minutes_per_day = p["open_minutes"]
@@ -1302,8 +1300,7 @@ def plot_burnout_over_days(all_metrics: List[Metrics], p: Dict, active_roles: Li
         x = np.arange(1, num_days + 1)
         
         # Plot line
-        ax.plot(x, means, color=colors.get(role, '#333333'), 
-               linewidth=2.5, marker='o', markersize=6, label=role, alpha=0.9)
+        ax.plot(x, means, color=colors.get('Nurses' if role == 'Nurse' else role, '#333333'),  linewidth=2.5, marker='o', markersize=6, label='Nurses' if role == 'Nurse' else role, alpha=0.9)
         
         # Add confidence band
         upper = [means[i] + stds[i] for i in range(num_days)]
@@ -1332,7 +1329,7 @@ def plot_rerouting_by_day(all_metrics: List[Metrics], p: Dict, active_roles: Lis
     Line graph showing daily reroutes (inappropriate receipt) by role.
     """
     fig, ax = plt.subplots(figsize=(8, 4), dpi=100)
-    colors = {'Administrative staff': '#1f77b4', 'Nurse': '#ff7f0e', 'Doctors': '#2ca02c', 'Other staff': '#d62728'}
+    colors = {'Administrative staff': '#1f77b4', 'Nurses': '#ff7f0e', 'Doctors': '#2ca02c', 'Other staff': '#d62728'}
     
     num_days = max(1, int(p["sim_minutes"] // DAY_MIN))
     
@@ -1383,8 +1380,7 @@ def plot_rerouting_by_day(all_metrics: List[Metrics], p: Dict, active_roles: Lis
         x = np.arange(1, num_days + 1)
         
         # Plot line
-        ax.plot(x, means, color=colors.get(role, '#333333'), 
-               linewidth=2.5, marker='o', markersize=6, label=role, alpha=0.9)
+        ax.plot(x, means, color=colors.get('Nurses' if role == 'Nurse' else role, '#333333'), linewidth=2.5, marker='o', markersize=6, label='Nurses' if role == 'Nurse' else role, alpha=0.9)
         
         # Add confidence band
         upper = [means[i] + stds[i] for i in range(num_days)]
@@ -1412,7 +1408,7 @@ def plot_missing_info_by_day(all_metrics: List[Metrics], p: Dict, active_roles: 
     Line graph showing daily missing info callbacks by role.
     """
     fig, ax = plt.subplots(figsize=(8, 4), dpi=100)
-    colors = {'Administrative staff': '#1f77b4', 'Nurse': '#ff7f0e', 'Doctors': '#2ca02c', 'Other staff': '#d62728'}
+    colors = {'Administrative staff': '#1f77b4', 'Nurses': '#ff7f0e', 'Doctors': '#2ca02c', 'Other staff': '#d62728'}
     
     num_days = max(1, int(p["sim_minutes"] // DAY_MIN))
     
@@ -1447,8 +1443,7 @@ def plot_missing_info_by_day(all_metrics: List[Metrics], p: Dict, active_roles: 
         x = np.arange(1, num_days + 1)
         
         # Plot line
-        ax.plot(x, means, color=colors.get(role, '#333333'), 
-               linewidth=2.5, marker='o', markersize=6, label=role, alpha=0.9)
+        ax.plot(x, means, color=colors.get('Nurses' if role == 'Nurse' else role, '#333333'), linewidth=2.5, marker='o', markersize=6, label='Nurses' if role == 'Nurse' else role, alpha=0.9)
         
         # Add confidence band
         upper = [means[i] + stds[i] for i in range(num_days)]
