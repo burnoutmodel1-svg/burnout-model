@@ -76,13 +76,13 @@ class Metrics:
         self.arrivals_by_role = {r: 0 for r in ROLES}
         self.service_time_sum = {r: 0.0 for r in ROLES}
         self.loop_fd_insufficient = 0
-        self.loop_fd_rework = 0
+        self.loop_fd_corrections = 0
         self.loop_nurse_insufficient = 0
-        self.loop_nurse_rework = 0
+        self.loop_nurse_corrections = 0
         self.loop_provider_insufficient = 0
-        self.loop_provider_rework = 0
+        self.loop_provider_corrections = 0
         self.loop_backoffice_insufficient = 0
-        self.loop_backoffice_rework = 0
+        self.loop_backoffice_corrections = 0
         self.events = []
         self.task_arrival_time: Dict[str, float] = {}
         self.task_completion_time: Dict[str, float] = {}
@@ -99,9 +99,9 @@ STEP_LABELS = {
     "FD_RETRY_DONE": "Administrative staff: re-done (info)", "NU_QUEUE": "Nurse: queued", "NU_DONE": "Nurse: completed",
     "NU_INSUFF": "Nurse: missing info", "NU_RECHECK_QUEUE": "Nurse: re-check queued",
     "NU_RECHECK_DONE": "Nurse: re-check completed", "PR_QUEUE": "Doctors: queued", "PR_DONE": "Doctors: completed",
-    "PR_INSUFF": "Doctors: rework needed", "PR_RECHECK_QUEUE": "Doctors: recheck queued",
+    "PR_INSUFF": "Doctors: corrections needed", "PR_RECHECK_QUEUE": "Doctors: recheck queued",
     "PR_RECHECK_DONE": "Doctors: recheck done", "BO_QUEUE": "Other staff: queued", "BO_DONE": "Other staff: completed",
-    "BO_INSUFF": "Other staff: rework needed", "BO_RECHECK_QUEUE": "Other staff: recheck queued",
+    "BO_INSUFF": "Other staff: corrections needed", "BO_RECHECK_QUEUE": "Other staff: recheck queued",
     "BO_RECHECK_DONE": "Other staff: recheck done", "DONE": "Task resolved"
 }
 
@@ -284,15 +284,15 @@ def handle_role(env, task_id, s: CHCSystem, role: str):
                     s.m.log(env.now, task_id, "FD_INSUFF_QUEUE", f"Loop #{total_loops}")
                     yield from s.scheduled_service(res, "Administrative staff", s.p["svc_frontdesk"] * 0.5)
                     s.m.log(env.now, task_id, "FD_INSUFF_DONE", f"Loop #{total_loops}")
-                # If no insufficient info, check rework
-                elif random.random() < s.p["p_fd_rework"]:
+                # If no insufficient info, check corrections
+                elif random.random() < s.p["p_fd_corrections"]:
                     total_loops += 1
-                    s.m.loop_fd_rework += 1
-                    s.m.log(env.now, task_id, "FD_REWORK", f"Rework loop #{total_loops}")
-                    yield env.timeout(s.p["fd_rework_delay"])
-                    s.m.log(env.now, task_id, "FD_REWORK_QUEUE", f"Loop #{total_loops}")
+                    s.m.loop_fd_corrections += 1
+                    s.m.log(env.now, task_id, "FD_corrections", f"corrections loop #{total_loops}")
+                    yield env.timeout(s.p["fd_corrections_delay"])
+                    s.m.log(env.now, task_id, "FD_corrections_QUEUE", f"Loop #{total_loops}")
                     yield from s.scheduled_service(res, "Administrative staff", s.p["svc_frontdesk"] * 0.33)
-                    s.m.log(env.now, task_id, "FD_REWORK_DONE", f"Loop #{total_loops}")
+                    s.m.log(env.now, task_id, "FD_corrections_DONE", f"Loop #{total_loops}")
                 else:
                     break  # No issues, exit loop
                     
@@ -337,15 +337,15 @@ def handle_role(env, task_id, s: CHCSystem, role: str):
                     s.m.log(env.now, task_id, "PR_INSUFF_QUEUE", f"Loop #{total_loops}")
                     yield from s.scheduled_service(res, "Doctors", s.p["svc_provider"] * 0.5)
                     s.m.log(env.now, task_id, "PR_INSUFF_DONE", f"Loop #{total_loops}")
-                # If no insufficient info, check rework
-                elif random.random() < s.p["p_provider_rework"]:
+                # If no insufficient info, check corrections
+                elif random.random() < s.p["p_provider_corrections"]:
                     total_loops += 1
-                    s.m.loop_provider_rework += 1
-                    s.m.log(env.now, task_id, "PR_REWORK", f"Rework loop #{total_loops}")
-                    yield env.timeout(s.p["provider_rework_delay"])
-                    s.m.log(env.now, task_id, "PR_REWORK_QUEUE", f"Loop #{total_loops}")
+                    s.m.loop_provider_corrections += 1
+                    s.m.log(env.now, task_id, "PR_corrections", f"corrections loop #{total_loops}")
+                    yield env.timeout(s.p["provider_corrections_delay"])
+                    s.m.log(env.now, task_id, "PR_corrections_QUEUE", f"Loop #{total_loops}")
                     yield from s.scheduled_service(res, "Doctors", s.p["svc_provider"] * 0.33)
-                    s.m.log(env.now, task_id, "PR_REWORK_DONE", f"Loop #{total_loops}")
+                    s.m.log(env.now, task_id, "PR_corrections_DONE", f"Loop #{total_loops}")
                 else:
                     break  # No issues, exit loop
 
@@ -369,15 +369,15 @@ def handle_role(env, task_id, s: CHCSystem, role: str):
                     s.m.log(env.now, task_id, "BO_INSUFF_QUEUE", f"Loop #{total_loops}")
                     yield from s.scheduled_service(res, "Other staff", s.p["svc_backoffice"] * 0.5)
                     s.m.log(env.now, task_id, "BO_INSUFF_DONE", f"Loop #{total_loops}")
-                # If no insufficient info, check rework
-                elif random.random() < s.p["p_backoffice_rework"]:
+                # If no insufficient info, check corrections
+                elif random.random() < s.p["p_backoffice_corrections"]:
                     total_loops += 1
-                    s.m.loop_backoffice_rework += 1
-                    s.m.log(env.now, task_id, "BO_REWORK", f"Rework loop #{total_loops}")
-                    yield env.timeout(s.p["backoffice_rework_delay"])
-                    s.m.log(env.now, task_id, "BO_REWORK_QUEUE", f"Loop #{total_loops}")
+                    s.m.loop_backoffice_corrections += 1
+                    s.m.log(env.now, task_id, "BO_corrections", f"corrections loop #{total_loops}")
+                    yield env.timeout(s.p["backoffice_corrections_delay"])
+                    s.m.log(env.now, task_id, "BO_corrections_QUEUE", f"Loop #{total_loops}")
                     yield from s.scheduled_service(res, "Other staff", s.p["svc_backoffice"] * 0.33)
-                    s.m.log(env.now, task_id, "BO_REWORK_DONE", f"Loop #{total_loops}")
+                    s.m.log(env.now, task_id, "BO_corrections_DONE", f"Loop #{total_loops}")
                 else:
                     break  # No issues, exit loop
 
@@ -475,14 +475,14 @@ def calculate_burnout(all_metrics: List[Metrics], p: Dict, active_roles: List[st
     Burnout model with user-defined weights for each underlying factor:
       - Utilization (with threshold effects)
       - Availability Stress
-      - Rework Percentage
+      - corrections Percentage
       - Task Switching (queue volatility)
       - Incompletion Rate
       - Throughput Deficit
     """
     weights = p.get("burnout_weights", {
         "utilization": 8, "availability_stress": 1,
-        "rework": 8, "task_switching": 1,
+        "corrections": 8, "task_switching": 1,
         "incompletion": 1, "throughput_deficit": 1
     })
     
@@ -514,7 +514,7 @@ def calculate_burnout(all_metrics: List[Metrics], p: Dict, active_roles: List[st
 
         # Collect metrics across replications
         util_list = []
-        rework_pct_list = []
+        corrections_pct_list = []
         queue_volatility_list = []
         completion_rate_list = []
         throughput_rate_list = []
@@ -527,7 +527,7 @@ def calculate_burnout(all_metrics: List[Metrics], p: Dict, active_roles: List[st
             util = total_service / max(1, total_available_capacity)
             util_list.append(min(1.0, util))
 
-            # ReworkPct (0–1)
+            # correctionsPct (0–1)
             loop_counts = {
                 "Administrative staff": metrics.loop_fd_insufficient,
                 "Nurse": metrics.loop_nurse_insufficient,
@@ -541,9 +541,9 @@ def calculate_burnout(all_metrics: List[Metrics], p: Dict, active_roles: List[st
                 "Doctors": p["svc_provider"],
                 "Other staff": p["svc_backoffice"]
             }[role]
-            estimated_rework = loops * max(0.0, svc_time) * 0.5
-            rework_pct = (estimated_rework / max(1, total_service)) if total_service > 0 else 0.0
-            rework_pct_list.append(min(1.0, rework_pct))
+            estimated_corrections = loops * max(0.0, svc_time) * 0.5
+            corrections_pct = (estimated_corrections / max(1, total_service)) if total_service > 0 else 0.0
+            corrections_pct_list.append(min(1.0, corrections_pct))
 
             # Queue Volatility (0–1)
             queue_lengths = metrics.queues[role]
@@ -573,7 +573,7 @@ def calculate_burnout(all_metrics: List[Metrics], p: Dict, active_roles: List[st
 
         # Average metrics across replications
         avg_util = float(np.mean(util_list)) if util_list else 0.0
-        avg_rework = float(np.mean(rework_pct_list)) if rework_pct_list else 0.0
+        avg_corrections = float(np.mean(corrections_pct_list)) if corrections_pct_list else 0.0
         avg_queue_volatility = float(np.mean(queue_volatility_list)) if queue_volatility_list else 0.0
         avg_completion_rate = float(np.mean(completion_rate_list)) if completion_rate_list else 0.0
         avg_throughput = float(np.mean(throughput_rate_list)) if throughput_rate_list else 0.0
@@ -592,7 +592,7 @@ def calculate_burnout(all_metrics: List[Metrics], p: Dict, active_roles: List[st
                 return 0.5 + 0.5 * (np.exp(2 * excess) - 1) / (np.exp(2) - 1)
         
         util_transformed = transform_utilization(avg_util)
-        rework_transformed = min(1.0, avg_rework * 2.5)  # Linear scaling, amplified 2.5x
+        corrections_transformed = min(1.0, avg_corrections * 2.5)  # Linear scaling, amplified 2.5x
         volatility_transformed = np.sqrt(avg_queue_volatility)
         incompletion = 1.0 - avg_completion_rate
         incompletion_transformed = incompletion ** 0.7
@@ -606,7 +606,7 @@ def calculate_burnout(all_metrics: List[Metrics], p: Dict, active_roles: List[st
         components = {
             "utilization": 100.0 * util_transformed,
             "availability_stress": 100.0 * avail_stress,
-            "rework": 100.0 * rework_transformed,
+            "corrections": 100.0 * corrections_transformed,
             "task_switching": 100.0 * volatility_transformed,
             "incompletion": 100.0 * incompletion_transformed,
             "throughput_deficit": 100.0 * throughput_deficit
@@ -1145,7 +1145,7 @@ def plot_burnout_over_days(all_metrics: List[Metrics], p: Dict, active_roles: Li
     
     weights = p.get("burnout_weights", {
         "utilization": 8, "availability_stress": 1,
-        "rework": 8, "task_switching": 1,
+        "corrections": 8, "task_switching": 1,
         "incompletion": 1, "throughput_deficit": 1
     })
     
@@ -1212,12 +1212,12 @@ def plot_burnout_over_days(all_metrics: List[Metrics], p: Dict, active_roles: Li
                 estimated_work_time = tasks_served_today * avg_service_time
                 daily_util = min(1.0, estimated_work_time / max(1, available_capacity_minutes))
                 
-                # 2. REWORK - count INSUFF events TODAY ONLY
+                # 2. corrections - count INSUFF events TODAY ONLY
                 daily_loops = sum(1 for t, name, step, note, arr in metrics.events 
                                  if step == insuff_step and day_start <= t < day_end)
                 
                 # Normalize: 5+ loops = maximum (1.0)
-                daily_rework = min(1.0, daily_loops / 5.0)
+                daily_corrections = min(1.0, daily_loops / 5.0)
                 
                 # 3. TASK SWITCHING - queue volatility TODAY ONLY
                 day_queue_samples = [metrics.queues[role][i] for i, t in enumerate(metrics.time_stamps) 
@@ -1283,7 +1283,7 @@ def plot_burnout_over_days(all_metrics: List[Metrics], p: Dict, active_roles: Li
                 components = {
                     "utilization": 100.0 * daily_util,
                     "availability_stress": 100.0 * avail_stress,
-                    "rework": 100.0 * daily_rework,
+                    "corrections": 100.0 * daily_corrections,
                     "task_switching": 100.0 * daily_volatility,
                     "incompletion": 100.0 * daily_incompletion,
                     "throughput_deficit": 100.0 * daily_throughput_deficit
@@ -1619,25 +1619,25 @@ def aggregate_replications(p: Dict, all_metrics: List[Metrics], active_roles: Li
         for r in active_roles
     ])
     
-    rework_pct_list = []
+    corrections_pct_list = []
     loop_counts_lists = {"Administrative staff": [], "Nurse": [], "Doctors": [], "Other staff": []}
     
     for metrics in all_metrics:
-        rework_tasks = set()
+        corrections_tasks = set()
         for t, name, step, note, _arr in metrics.events:
             if step.endswith("INSUFF") or "RECHECK" in step:
-                rework_tasks.add(name)
+                corrections_tasks.add(name)
         
         done_ids = set(metrics.task_completion_time.keys())
-        rework_pct_list.append(100.0 * len(rework_tasks & done_ids) / max(1, len(done_ids)))
+        corrections_pct_list.append(100.0 * len(corrections_tasks & done_ids) / max(1, len(done_ids)))
         
         loop_counts_lists["Administrative staff"].append(metrics.loop_fd_insufficient)
         loop_counts_lists["Nurse"].append(metrics.loop_nurse_insufficient)
         loop_counts_lists["Doctors"].append(metrics.loop_provider_insufficient)
         loop_counts_lists["Other staff"].append(metrics.loop_backoffice_insufficient)
     
-    rework_overview_df = pd.DataFrame([
-        {"Metric": "% tasks with any rework", "Value": fmt_mean_std_pct(rework_pct_list)}
+    corrections_overview_df = pd.DataFrame([
+        {"Metric": "% tasks with any corrections", "Value": fmt_mean_std_pct(corrections_pct_list)}
     ])
     
     total_loops_list = [sum(loop_counts_lists[r][i] for r in ROLES) for i in range(num_reps)]
@@ -1709,14 +1709,14 @@ def aggregate_replications(p: Dict, all_metrics: List[Metrics], active_roles: Li
         "Avg turnaround (min)": np.mean(flow_avg_list),
         "Median turnaround (min)": np.mean(flow_med_list),
         "Same-day completion (%)": np.mean(same_day_list),
-        "Rework (% of completed)": np.mean(rework_pct_list),
+        "corrections (% of completed)": np.mean(corrections_pct_list),
         "Utilization overall (%)": np.mean(util_overall_list),
     }
     summary_df = pd.DataFrame([summary_row])
     
     return {
         "flow_df": flow_df, "time_at_role_df": time_at_role_df, "queue_df": queue_df,
-        "rework_overview_df": rework_overview_df, "loop_origin_df": loop_origin_df,
+        "corrections_overview_df": corrections_overview_df, "loop_origin_df": loop_origin_df,
         "throughput_full_df": throughput_full_df, "util_df": util_df, "summary_df": summary_df
     }
 
@@ -1726,7 +1726,7 @@ def create_summary_table(all_metrics: List[Metrics], p: Dict, burnout_data: Dict
     """
     num_reps = len(all_metrics)
     
-    # Missing info by role (INSUFF events - rework loops)
+    # Missing info by role (INSUFF events - corrections loops)
     missing_info_by_role = {r: [] for r in active_roles}
     for metrics in all_metrics:
         role_missing = {r: 0 for r in active_roles}
@@ -1772,7 +1772,7 @@ def create_summary_table(all_metrics: List[Metrics], p: Dict, burnout_data: Dict
                     initial_role = "Other staff"
                 
                 # Count as reroute if current role != initial role
-                # AND it's not a recheck queue (those are rework, not reroutes)
+                # AND it's not a recheck queue (those are corrections, not reroutes)
                 if current_role != initial_role and "RECHECK" not in step:
                     role_reroutes[current_role] += 1
         
@@ -1808,7 +1808,7 @@ def create_summary_table(all_metrics: List[Metrics], p: Dict, burnout_data: Dict
     
     weights = p.get("burnout_weights", {
         "utilization": 8, "availability_stress": 1,
-        "rework": 8, "task_switching": 1,
+        "corrections": 8, "task_switching": 1,
         "incompletion": 1, "throughput_deficit": 1
     })
     
@@ -1877,10 +1877,10 @@ def create_summary_table(all_metrics: List[Metrics], p: Dict, burnout_data: Dict
                     estimated_work_time = tasks_served_today * avg_service_time
                     daily_util = min(1.0, estimated_work_time / max(1, available_capacity_minutes))
                     
-                    # 2. REWORK
+                    # 2. corrections
                     daily_loops = sum(1 for t, name, step, note, arr in metrics.events 
                                      if step == insuff_step and day_start <= t < day_end)
-                    daily_rework = min(1.0, daily_loops / 5.0)
+                    daily_corrections = min(1.0, daily_loops / 5.0)
                     
                     # 3. TASK SWITCHING
                     day_queue_samples = [metrics.queues[role][i] for i, t in enumerate(metrics.time_stamps) 
@@ -1923,7 +1923,7 @@ def create_summary_table(all_metrics: List[Metrics], p: Dict, burnout_data: Dict
                     components = {
                         "utilization": 100.0 * daily_util,
                         "availability_stress": 100.0 * avail_stress,
-                        "rework": 100.0 * daily_rework,
+                        "corrections": 100.0 * daily_corrections,
                         "task_switching": 100.0 * daily_volatility,
                         "incompletion": 100.0 * daily_incompletion,
                         "throughput_deficit": 100.0 * daily_throughput_deficit
@@ -2018,7 +2018,6 @@ def create_excel_download(all_metrics: List[Metrics], p: Dict) -> BytesIO:
 st.set_page_config(page_title="Community Health Center Workflow Model", layout="wide")
 st.title("Community Health Center Workflow Model")
 st.subheader("Healthcare Systems Engineering Institute (AHRQ grant #R01HS028458)")
-st.caption("By Ines Sereno")
 
 if "wizard_step" not in st.session_state:
     st.session_state.wizard_step = 1
@@ -2065,14 +2064,14 @@ if st.session_state.wizard_step == 1:
         associated burnout and to help evaluate potential process improvements and interventions.
         
         **How tool works:**
-        - Patient-initiated paperwork, calls, or postal messages are received by various staff (nurses, doctors, staff)
+        - Patient-initiated paperwork, calls, or portal messages are received by various staff (nurses, doctors, staff)
         - Staff process these based on availability and processing times
         - Items received by the wrong type of personnel are routed appropriately
         - The model tracks daily workload, inefficiency, response delays, and contribution to burnout for each type of personnel
         
         **How to use:**
         1. **Define your clinic** below by setting staffing levels, routing logic, and processing times
-        2. **Click "Save"** to store your configuration
+        2. **Click "Save"** to store your scenario
         3. **Click "Run Simulation"** to see results including burnout scores, utilization, and bottlenecks
         4. **Try different scenarios** to test interventions (e.g. more staff, reduce volumes, improve workflows)
         
@@ -2114,16 +2113,14 @@ if st.session_state.wizard_step == 1:
     
         seed = 42  # Fixed seed for reproducibility
 
-        with st.expander("Roles", expanded=False):
-            st.caption("Configure staffing, arrivals, and availability for each role")
-            
+        with st.expander("Roles", expanded=False):            
             st.markdown("##### Administrative staff")
             cFD1, cFD2, cFD3 = st.columns(3)
             with cFD1:
                 fd_cap_form = st.number_input("Number working per day", 0, 50, _init_ss("fd_cap", 3), 1, "%d", key="fd_cap_input",
                                                help="Number of Administrative staff")
             with cFD2:
-                arr_fd = st.number_input("Volume per day", 0, 5000, _init_ss("arr_fd", 32), 1, "%d", disabled=(fd_cap_form==0), key="arr_fd_input",
+                arr_fd = st.number_input("Volume items per day", 0, 5000, _init_ss("arr_fd", 32), 1, "%d", disabled=(fd_cap_form==0), key="arr_fd_input",
                          help="Average number of tasks per day")
             with cFD3:
                 avail_fd = st.number_input("Availability (min/day)", 0, 480, _init_ss("avail_fd", 240), 1, "%d", disabled=(fd_cap_form==0), key="avail_fd_input",
@@ -2137,7 +2134,7 @@ if st.session_state.wizard_step == 1:
                 nu_cap_form = st.number_input("Number working per day", 0, 50, _init_ss("nurse_cap", 3), 1, "%d", key="nurse_cap_input",
                                                   help="Number of nurses or medical assistants")
             with cNU2:
-                arr_nu = st.number_input("Volume per day", 0, 5000, _init_ss("arr_nu", 24), 1, "%d", disabled=(nu_cap_form==0), key="arr_nu_input",
+                arr_nu = st.number_input("Volume items per day", 0, 5000, _init_ss("arr_nu", 24), 1, "%d", disabled=(nu_cap_form==0), key="arr_nu_input",
                          help="Average number of tasks per day")
             with cNU3:
                 avail_nu = st.number_input("Availability (min/day)", 0, 480, _init_ss("avail_nu", 120), 1, "%d", disabled=(nu_cap_form==0), key="avail_nu_input",
@@ -2151,7 +2148,7 @@ if st.session_state.wizard_step == 1:
                 pr_cap_form = st.number_input("Number working per day", 0, 50, _init_ss("provider_cap", 2), 1, "%d", key="provider_cap_input",
                                                      help="Number of Doctors")
             with cPR2:
-                arr_pr = st.number_input("Volume per day", 0, 5000, _init_ss("arr_pr", 16), 1, "%d", disabled=(pr_cap_form==0), key="arr_pr_input",
+                arr_pr = st.number_input("Volume items per day", 0, 5000, _init_ss("arr_pr", 16), 1, "%d", disabled=(pr_cap_form==0), key="arr_pr_input",
                          help="Average number of tasks per day")
             with cPR3:
                 avail_pr = st.number_input("Availability (min/day)", 0, 480, _init_ss("avail_pr", 60), 1, "%d", disabled=(pr_cap_form==0), key="avail_pr_input",
@@ -2165,7 +2162,7 @@ if st.session_state.wizard_step == 1:
                 bo_cap_form = st.number_input("Number working per day", 0, 50, _init_ss("backoffice_cap", 2), 1, "%d", key="bo_cap_input",
                                                help="Number of Other staff")
             with cBO2:
-                 arr_bo = st.number_input("Volume per day", 0, 5000, _init_ss("arr_bo", 16), 1, "%d", disabled=(bo_cap_form==0), key="arr_bo_input",
+                 arr_bo = st.number_input("Volume items per day", 0, 5000, _init_ss("arr_bo", 16), 1, "%d", disabled=(bo_cap_form==0), key="arr_bo_input",
                          help="Average number of tasks per day")
             with cBO3:
                 avail_bo = st.number_input("Availability (min/day)", 0, 480, _init_ss("avail_bo", 180), 1, "%d", disabled=(bo_cap_form==0), key="avail_bo_input",
@@ -2193,61 +2190,26 @@ if st.session_state.wizard_step == 1:
         num_replications = st.number_input("Number of replications", 1, 1000, _init_ss("num_replications", 30), 1, "%d", 
                                       help="Number of independent simulation runs")
 
-        with st.expander("Advanced Settings – Processing times, loops & routing", expanded=False):
-        
-            with st.expander("Contributors to Burnout - Relative Weights", expanded=False):
-                st.caption("Assign each factor a weight between 0 and 10 (0 = no contribution, 10 = maximum contribution)")
-
-                col1, col2 = st.columns(2)
-
-                with col1:
-                    st.markdown("**Emotional Exhaustion Contributors:**")
-                    w_utilization = st.slider("Utilization", 0, 10, _init_ss("w_utilization", 8), 1, 
-                                  help="How much does high utilization contribute to burnout?")
-                    w_availability_stress = st.slider("Availability Stress", 0, 10, _init_ss("w_availability_stress", 1), 1,
-                                         help="How much does limited availability contribute to burnout?")
-                
-                    st.markdown("**Depersonalization Contributors:**")
-                    w_rework = st.slider("Rework Percentage", 0, 10, _init_ss("w_rework", 8), 1,
-                            help="How much does rework contribute to burnout?")
-                    w_task_switching = st.slider("Task Switching (Queue Volatility)", 0, 10, _init_ss("w_task_switching", 1), 1,
-                                    help="How much does unpredictable workload contribute to burnout?")
-                
-                with col2:
-                    st.markdown("**Reduced Accomplishment Contributors:**")
-                    w_incompletion = st.slider("Incomplete Tasks", 0, 10, _init_ss("w_incompletion", 1), 1,
-                                   help="How much do incomplete tasks contribute to burnout?")
-                    w_throughput_deficit = st.slider("Throughput Deficit", 0, 10, _init_ss("w_throughput_deficit", 1), 1,
-                                        help="How much does falling behind expected throughput contribute to burnout?")
-                
-                # Calculate and display normalized weights
-                total_weight = w_utilization + w_availability_stress + w_rework + w_task_switching + w_incompletion + w_throughput_deficit
-                if total_weight > 0:
-                    st.info(f"**Total weight: {total_weight}** — All scores will be normalized to 0-100 scale")
-                else:
-                    st.warning("All weights are 0 - burnout scores will be 0")
-        
+        with st.expander("Processing times & routing", expanded=False):
             with st.expander("Administrative staff", expanded=False):
                 st.markdown("**Processing time**")
-                svc_frontdesk = st.slider("Mean Processing time (minutes)", 0.0, 30.0, _init_ss("svc_frontdesk", 3.0), 0.5, disabled=(fd_cap_form==0),
+                svc_frontdesk = st.slider("Mean processing time (minutes)", 0.0, 30.0, _init_ss("svc_frontdesk", 3.0), 0.5, disabled=(fd_cap_form==0),
                                       help="Average time to complete a task")
             
-                st.markdown("**Rework Loops**")
-                st.caption("Insufficient info = patient-side delays (50% reprocess time). Rework = internal errors (33% reprocess time).")
-            
-                st.markdown("*Missing Info (patient-side):*")
+                st.markdown("**corrections Loops**")            
+                st.markdown("*Missing Information (patient-side):*")
                 cFDL1, cFDL2 = st.columns(2)
                 with cFDL1:
-                    p_fd_insuff = st.slider("Percent with insufficient info", 0.0, 1.0, _init_ss("p_fd_insuff", 0.25), 0.01, disabled=(fd_cap_form==0), key="fd_p_insuff")
+                    p_fd_insuff = st.slider("Percent with insufficient information", 0.0, 1.0, _init_ss("p_fd_insuff", 0.25), 0.01, disabled=(fd_cap_form==0), key="fd_p_insuff")
                 with cFDL2:
-                    fd_insuff_delay = st.slider("Delay to obtain info (min)", 0.0, 480.0, _init_ss("fd_insuff_delay", 240.0), 1.0, disabled=(fd_cap_form==0))
+                    fd_insuff_delay = st.slider("Delay to obtain information (min)", 0.0, 480.0, _init_ss("fd_insuff_delay", 240.0), 1.0, disabled=(fd_cap_form==0))
             
-                st.markdown("*Rework (internal errors):*")
+                st.markdown("*corrections (internal errors):*")
                 cFDL3, cFDL4 = st.columns(2)
                 with cFDL3:
-                    p_fd_rework = st.slider("Percent with rework needed", 0.0, 1.0, _init_ss("p_fd_rework", 0.10), 0.01, disabled=(fd_cap_form==0), key="fd_p_rework")
+                    p_fd_corrections = st.slider("Percent with corrections needed", 0.0, 1.0, _init_ss("p_fd_corrections", 0.10), 0.01, disabled=(fd_cap_form==0), key="fd_p_corrections")
                 with cFDL4:
-                    fd_rework_delay = st.slider("Delay to identify rework (min)", 0.0, 240.0, _init_ss("fd_rework_delay", 60.0), 1.0, disabled=(fd_cap_form==0), key="fd_rework_delay")
+                    fd_corrections_delay = st.slider("Delay to correct (min)", 0.0, 240.0, _init_ss("fd_corrections_delay", 60.0), 1.0, disabled=(fd_cap_form==0), key="fd_corrections_delay")
             
                 max_fd_loops = st.number_input("Maximum number of loops (both types combined)", 0, 10, _init_ss("max_fd_loops", 3), 1, "%d", disabled=(fd_cap_form==0), key="fd_max_loops")
     
@@ -2275,22 +2237,22 @@ if st.session_state.wizard_step == 1:
                 with cNS2:
                     svc_nurse = st.slider("Non-protocol Processing time (minutes)", 0.0, 40.0, _init_ss("svc_nurse", 5.0), 0.5, disabled=(nu_cap_form==0))
                 
-                st.markdown("**Rework Loops**")
-                st.caption("Insufficient info = patient-side delays. Rework = internal errors.")
+                st.markdown("**corrections Loops**")
+                st.caption("Insufficient information = patient-side delays. corrections = internal errors.")
                 
-                st.markdown("*Missing Info (patient-side):*")
+                st.markdown("*Missing Information (patient-side):*")
                 cNUL1, cNUL2 = st.columns(2)
                 with cNUL1:
-                    p_nurse_insuff = st.slider("Percent with insufficient info", 0.0, 1.0, _init_ss("p_nurse_insuff", 0.20), 0.01, disabled=(nu_cap_form==0), key="nu_p_insuff")
+                    p_nurse_insuff = st.slider("Percent with insufficient information", 0.0, 1.0, _init_ss("p_nurse_insuff", 0.20), 0.01, disabled=(nu_cap_form==0), key="nu_p_insuff")
                 with cNUL2:
-                    nurse_insuff_delay = st.slider("Delay to obtain info (min)", 0.0, 480.0, _init_ss("nurse_insuff_delay", 240.0), 1.0, disabled=(nu_cap_form==0), key="nu_insuff_delay")
+                    nurse_insuff_delay = st.slider("Delay to obtain information (min)", 0.0, 480.0, _init_ss("nurse_insuff_delay", 240.0), 1.0, disabled=(nu_cap_form==0), key="nu_insuff_delay")
                 
-                st.markdown("*Rework (internal errors):*")
+                st.markdown("*corrections (internal errors):*")
                 cNUL3, cNUL4 = st.columns(2)
                 with cNUL3:
-                    p_nurse_rework = st.slider("Percent with rework needed", 0.0, 1.0, _init_ss("p_nurse_rework", 0.10), 0.01, disabled=(nu_cap_form==0), key="nu_p_rework")
+                    p_nurse_corrections = st.slider("Percent with corrections needed", 0.0, 1.0, _init_ss("p_nurse_corrections", 0.10), 0.01, disabled=(nu_cap_form==0), key="nu_p_corrections")
                 with cNUL4:
-                    nurse_rework_delay = st.slider("Delay to identify rework (min)", 0.0, 240.0, _init_ss("nurse_rework_delay", 60.0), 1.0, disabled=(nu_cap_form==0), key="nu_rework_delay")
+                    nurse_corrections_delay = st.slider("Delay to correct (min)", 0.0, 240.0, _init_ss("nurse_corrections_delay", 60.0), 1.0, disabled=(nu_cap_form==0), key="nu_corrections_delay")
                 
                 max_nurse_loops = st.number_input("Maximum number of loops (both types combined)", 0, 10, _init_ss("max_nurse_loops", 3), 1, "%d", disabled=(nu_cap_form==0), key="nu_max_loops")
                 
@@ -2312,22 +2274,22 @@ if st.session_state.wizard_step == 1:
                 st.markdown("**Processing time**")
                 svc_provider = st.slider("Mean Processing time (minutes)", 0.0, 480.0, _init_ss("svc_provider", 7.0), 0.5, disabled=(pr_cap_form==0))
             
-                st.markdown("**Rework Loops**")
-                st.caption("Insufficient info = patient-side delays. Rework = internal errors.")
+                st.markdown("**corrections Loops**")
+                st.caption("Insufficient information = patient-side delays. corrections = internal errors.")
                 
-                st.markdown("*Missing Info (patient-side):*")
+                st.markdown("*Missing Information (patient-side):*")
                 cPRL1, cPRL2 = st.columns(2)
                 with cPRL1:
-                    p_provider_insuff = st.slider("Percent with insufficient info", 0.0, 1.0, _init_ss("p_provider_insuff", 0.15), 0.01, disabled=(pr_cap_form==0), key="pr_p_insuff")
+                    p_provider_insuff = st.slider("Percent with insufficient information", 0.0, 1.0, _init_ss("p_provider_insuff", 0.15), 0.01, disabled=(pr_cap_form==0), key="pr_p_insuff")
                 with cPRL2:
-                    provider_insuff_delay = st.slider("Delay to obtain info (min)", 0.0, 480.0, _init_ss("provider_insuff_delay", 300.0), 1.0, disabled=(pr_cap_form==0), key="pr_insuff_delay")
+                    provider_insuff_delay = st.slider("Delay to obtain information (min)", 0.0, 480.0, _init_ss("provider_insuff_delay", 300.0), 1.0, disabled=(pr_cap_form==0), key="pr_insuff_delay")
                 
-                st.markdown("*Rework (internal errors):*")
+                st.markdown("*corrections (internal errors):*")
                 cPRL3, cPRL4 = st.columns(2)
                 with cPRL3:
-                    p_provider_rework = st.slider("Percent with rework needed", 0.0, 1.0, _init_ss("p_provider_rework", 0.10), 0.01, disabled=(pr_cap_form==0), key="pr_p_rework")
+                    p_provider_corrections = st.slider("Percent with corrections needed", 0.0, 1.0, _init_ss("p_provider_corrections", 0.10), 0.01, disabled=(pr_cap_form==0), key="pr_p_corrections")
                 with cPRL4:
-                    provider_rework_delay = st.slider("Delay to identify rework (min)", 0.0, 240.0, _init_ss("provider_rework_delay", 60.0), 1.0, disabled=(pr_cap_form==0), key="pr_rework_delay")
+                    provider_corrections_delay = st.slider("Delay to correct (min)", 0.0, 240.0, _init_ss("provider_corrections_delay", 60.0), 1.0, disabled=(pr_cap_form==0), key="pr_corrections_delay")
                 
                 max_provider_loops = st.number_input("Maximum number of loops (both types combined)", 0, 10, _init_ss("max_provider_loops", 3), 1, "%d", disabled=(pr_cap_form==0), key="pr_max_loops")
 
@@ -2346,26 +2308,26 @@ if st.session_state.wizard_step == 1:
                 st.markdown("**Processing time**")
                 svc_backoffice = st.slider("Mean Processing time (minutes)", 0.0, 480.0, _init_ss("svc_backoffice", 5.0), 0.5, disabled=(bo_cap_form==0))
             
-                st.markdown("**Rework Loops**")
-                st.caption("Insufficient info = patient-side delays. Rework = internal errors.")
+                st.markdown("**corrections Loops**")
+                st.caption("Insufficient information = patient-side delays. corrections = internal errors.")
                 
-                st.markdown("*Missing Info (patient-side):*")
+                st.markdown("*Missing Information (patient-side):*")
                 cBOL1, cBOL2 = st.columns(2)
                 with cBOL1:
-                    p_backoffice_insuff = st.slider("Percent with insufficient info", 0.0, 1.0, _init_ss("p_backoffice_insuff", 0.18), 0.01, disabled=(bo_cap_form==0), key="bo_p_insuff")
+                    p_backoffice_insuff = st.slider("Percent with insufficient information", 0.0, 1.0, _init_ss("p_backoffice_insuff", 0.18), 0.01, disabled=(bo_cap_form==0), key="bo_p_insuff")
                 with cBOL2:
-                    backoffice_insuff_delay = st.slider("Delay to obtain info (min)", 0.0, 480.0, _init_ss("backoffice_insuff_delay", 180.0), 1.0, disabled=(bo_cap_form==0), key="bo_insuff_delay")
+                    backoffice_insuff_delay = st.slider("Delay to obtain information (min)", 0.0, 480.0, _init_ss("backoffice_insuff_delay", 180.0), 1.0, disabled=(bo_cap_form==0), key="bo_insuff_delay")
                 
-                st.markdown("*Rework (internal errors):*")
+                st.markdown("*Corrections (internal errors):*")
                 cBOL3, cBOL4 = st.columns(2)
                 with cBOL3:
-                    p_backoffice_rework = st.slider("Percent with rework needed", 0.0, 1.0, _init_ss("p_backoffice_rework", 0.10), 0.01, disabled=(bo_cap_form==0), key="bo_p_rework")
+                    p_backoffice_corrections = st.slider("Percent with corrections needed", 0.0, 1.0, _init_ss("p_backoffice_corrections", 0.10), 0.01, disabled=(bo_cap_form==0), key="bo_p_corrections")
                 with cBOL4:
-                    backoffice_rework_delay = st.slider("Delay to identify rework (min)", 0.0, 240.0, _init_ss("backoffice_rework_delay", 60.0), 1.0, disabled=(bo_cap_form==0), key="bo_rework_delay")
+                    backoffice_corrections_delay = st.slider("Delay to correct (min)", 0.0, 240.0, _init_ss("backoffice_corrections_delay", 60.0), 1.0, disabled=(bo_cap_form==0), key="bo_corrections_delay")
                 
                 max_backoffice_loops = st.number_input("Maximum number of loops (both types combined)", 0, 10, _init_ss("max_backoffice_loops", 3), 1, "%d", disabled=(bo_cap_form==0), key="bo_max_loops")
 
-                st.markdown("**Disposition or routing**")
+                st.markdown("**Disposition**")
                 bo_route_defaults = {
                     "Administrative staff": float(st.session_state.get("saved_r_Other staff_to_administrative_staff",
                                                   st.session_state.get("r_Other staff_to_administrative_staff", "0.10")).replace(",", ".")),
@@ -2385,6 +2347,38 @@ if st.session_state.wizard_step == 1:
             route["Nurse"] = nu_route
             route["Doctors"] = pr_route
             route["Other staff"] = bo_route
+
+            with st.expander("Contributors to Burnout - Relative Weights", expanded=False):
+                st.caption("Assign each factor a weight between 0 and 10 (0 = no contribution, 10 = maximum contribution)")
+
+                col1, col2 = st.columns(2)
+
+                with col1:
+                    st.markdown("**Emotional Exhaustion Contributors:**")
+                    w_utilization = st.slider("Utilization", 0, 10, _init_ss("w_utilization", 8), 1, 
+                                  help="How much does high utilization contribute to burnout?")
+                    w_availability_stress = st.slider("Availability Stress", 0, 10, _init_ss("w_availability_stress", 1), 1,
+                                         help="How much does limited availability contribute to burnout?")
+                
+                    st.markdown("**Depersonalization Contributors:**")
+                    w_corrections = st.slider("corrections Percentage", 0, 10, _init_ss("w_corrections", 8), 1,
+                            help="How much does corrections contribute to burnout?")
+                    w_task_switching = st.slider("Task Switching (Queue Volatility)", 0, 10, _init_ss("w_task_switching", 1), 1,
+                                    help="How much does unpredictable workload contribute to burnout?")
+                
+                with col2:
+                    st.markdown("**Reduced Accomplishment Contributors:**")
+                    w_incompletion = st.slider("Incomplete Tasks", 0, 10, _init_ss("w_incompletion", 1), 1,
+                                   help="How much do incomplete tasks contribute to burnout?")
+                    w_throughput_deficit = st.slider("Throughput Deficit", 0, 10, _init_ss("w_throughput_deficit", 1), 1,
+                                        help="How much does falling behind expected throughput contribute to burnout?")
+                
+                # Calculate and display normalized weights
+                total_weight = w_utilization + w_availability_stress + w_corrections + w_task_switching + w_incompletion + w_throughput_deficit
+                if total_weight > 0:
+                    st.info(f"**Total weight: {total_weight}** — All scores will be normalized to 0-100 scale")
+                else:
+                    st.warning("All weights are 0 - burnout scores will be 0")
 
         saved = st.form_submit_button("Save", type="primary")
 
@@ -2416,7 +2410,7 @@ if st.session_state.wizard_step == 1:
             # Burnout weights
             st.session_state.w_utilization = w_utilization
             st.session_state.w_availability_stress = w_availability_stress
-            st.session_state.w_rework = w_rework
+            st.session_state.w_corrections = w_corrections
             st.session_state.w_task_switching = w_task_switching
             st.session_state.w_incompletion = w_incompletion
             st.session_state.w_throughput_deficit = w_throughput_deficit
@@ -2432,29 +2426,29 @@ if st.session_state.wizard_step == 1:
             # Loop parameters - Administrative staff
             st.session_state.p_fd_insuff = p_fd_insuff
             #st.session_state.fd_insuff_delay = fd_insuff_delay
-            #st.session_state.p_fd_rework = p_fd_rework
-            #st.session_state.fd_rework_delay = fd_rework_delay
+            #st.session_state.p_fd_corrections = p_fd_corrections
+            #st.session_state.fd_corrections_delay = fd_corrections_delay
             st.session_state.max_fd_loops = max_fd_loops
             
             # Loop parameters - Nurse
             st.session_state.p_nurse_insuff = p_nurse_insuff
             st.session_state.nurse_insuff_delay = nurse_insuff_delay
-            st.session_state.p_nurse_rework = p_nurse_rework
-            st.session_state.nurse_rework_delay = nurse_rework_delay
+            st.session_state.p_nurse_corrections = p_nurse_corrections
+            st.session_state.nurse_corrections_delay = nurse_corrections_delay
             st.session_state.max_nurse_loops = max_nurse_loops
             
             # Loop parameters - Provider
             st.session_state.p_provider_insuff = p_provider_insuff
             st.session_state.provider_insuff_delay = provider_insuff_delay
-            st.session_state.p_provider_rework = p_provider_rework
-            st.session_state.provider_rework_delay = provider_rework_delay
+            st.session_state.p_provider_corrections = p_provider_corrections
+            st.session_state.provider_corrections_delay = provider_corrections_delay
             st.session_state.max_provider_loops = max_provider_loops
             
             # Loop parameters - Back office
             st.session_state.p_backoffice_insuff = p_backoffice_insuff
             st.session_state.backoffice_insuff_delay = backoffice_insuff_delay
-            st.session_state.p_backoffice_rework = p_backoffice_rework
-            st.session_state.backoffice_rework_delay = backoffice_rework_delay
+            st.session_state.p_backoffice_corrections = p_backoffice_corrections
+            st.session_state.backoffice_corrections_delay = backoffice_corrections_delay
             st.session_state.max_backoffice_loops = max_backoffice_loops
     
             # NEW: Save routing values explicitly
@@ -2521,19 +2515,19 @@ if st.session_state.wizard_step == 1:
                 burnout_weights={
                     "utilization": w_utilization,
                     "availability_stress": w_availability_stress,
-                    "rework": w_rework,
+                    "corrections": w_corrections,
                     "task_switching": w_task_switching,
                     "incompletion": w_incompletion,
                     "throughput_deficit": w_throughput_deficit
                 },
-                p_fd_insuff=p_fd_insuff, p_fd_rework=p_fd_rework, 
-                fd_insuff_delay=fd_insuff_delay, fd_rework_delay=fd_rework_delay, max_fd_loops=max_fd_loops,
-                p_nurse_insuff=p_nurse_insuff, p_nurse_rework=p_nurse_rework,
-                nurse_rework_delay=nurse_rework_delay, max_nurse_loops=max_nurse_loops,
-                p_provider_insuff=p_provider_insuff, p_provider_rework=p_provider_rework, 
-                provider_insuff_delay=provider_insuff_delay, provider_rework_delay=provider_rework_delay, max_provider_loops=max_provider_loops,
-                p_backoffice_insuff=p_backoffice_insuff, p_backoffice_rework=p_backoffice_rework, 
-                backoffice_insuff_delay=backoffice_insuff_delay, backoffice_rework_delay=backoffice_rework_delay, max_backoffice_loops=max_backoffice_loops, 
+                p_fd_insuff=p_fd_insuff, p_fd_corrections=p_fd_corrections, 
+                fd_insuff_delay=fd_insuff_delay, fd_corrections_delay=fd_corrections_delay, max_fd_loops=max_fd_loops,
+                p_nurse_insuff=p_nurse_insuff, p_nurse_corrections=p_nurse_corrections,
+                nurse_corrections_delay=nurse_corrections_delay, max_nurse_loops=max_nurse_loops,
+                p_provider_insuff=p_provider_insuff, p_provider_corrections=p_provider_corrections, 
+                provider_insuff_delay=provider_insuff_delay, provider_corrections_delay=provider_corrections_delay, max_provider_loops=max_provider_loops,
+                p_backoffice_insuff=p_backoffice_insuff, p_backoffice_corrections=p_backoffice_corrections, 
+                backoffice_insuff_delay=backoffice_insuff_delay, backoffice_corrections_delay=backoffice_corrections_delay, max_backoffice_loops=max_backoffice_loops, 
                 p_protocol=p_protocol, route_matrix=route
             )
             st.session_state.design_saved = True
@@ -2580,7 +2574,7 @@ elif st.session_state.wizard_step == 2:
     flow_df = agg_results["flow_df"]
     time_at_role_df = agg_results["time_at_role_df"]
     queue_df = agg_results["queue_df"]
-    rework_overview_df = agg_results["rework_overview_df"]
+    corrections_overview_df = agg_results["corrections_overview_df"]
     loop_origin_df = agg_results["loop_origin_df"]
     throughput_full_df = agg_results["throughput_full_df"]
     util_df = agg_results["util_df"]
@@ -2731,7 +2725,7 @@ elif st.session_state.wizard_step == 2:
                  title="How is Daily Workload calculated?")
         with col2:
             help_icon("**Calculation:** Calculates daily burnout score using that day's metrics: "
-                 "utilization, availability stress, rework, task switching, incompletion, and throughput deficit. "
+                 "utilization, availability stress, corrections, task switching, incompletion, and throughput deficit. "
                  "Weighted by your custom burnout weights.\n\n"
                  "**Interpretation:** Scores above 50 (orange line) = moderate burnout. "
                  "Scores above 75 (red line) = high burnout risk.",
@@ -2739,7 +2733,7 @@ elif st.session_state.wizard_step == 2:
         
         st.markdown("---")
         
-        # Second row: Rerouting and Missing Info
+        # Second row: Rerouting and Missing Information
         col1, col2 = st.columns(2)
         with col1:
             fig_rerouting = plot_rerouting_by_day(all_metrics, p, active_roles)
@@ -2760,10 +2754,10 @@ elif st.session_state.wizard_step == 2:
                  title="How is Rerouting (Inappropriate Receipt) calculated?")
         with col2:
             help_icon("**Calculation:** Counts 'INSUFF' events (insufficient information) per role per day. "
-                 "These trigger rework loops where staff must follow up for missing information.\n\n"
-                 "**Interpretation:** High missing info rates indicate communication gaps, "
+                 "These trigger corrections loops where staff must follow up for missing information.\n\n"
+                 "**Interpretation:** High missing information rates indicate communication gaps, "
                  "incomplete documentation, or unclear processes.",
-                 title="How is Missing Info (Call Backs) calculated?")
+                 title="How is Missing Information (Call Backs) calculated?")
         
         st.markdown("---")
         
