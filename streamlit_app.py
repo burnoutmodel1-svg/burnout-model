@@ -2213,7 +2213,7 @@ if st.session_state.wizard_step == 1:
             
                 max_fd_loops = st.number_input("Maximum number of loops (both types combined)", 0, 10, _init_ss("max_fd_loops", 3), 1, "%d", disabled=(fd_cap_form==0), key="fd_max_loops")
     
-                st.markdown("**Disposition or routing**")
+                st.markdown("**Disposition**")
                 fd_route_defaults = {
                     "Nurse": float(st.session_state.get("saved_r_Administrative staff_to_nurse", 
                                    st.session_state.get("r_Administrative staff_to_nurse", "0.50")).replace(",", ".")),
@@ -2256,7 +2256,7 @@ if st.session_state.wizard_step == 1:
                 
                 max_nurse_loops = st.number_input("Maximum number of loops (both types combined)", 0, 10, _init_ss("max_nurse_loops", 3), 1, "%d", disabled=(nu_cap_form==0), key="nu_max_loops")
                 
-                st.markdown("**Disposition or routing**")
+                st.markdown("**Disposition**")
                 nu_route_defaults = {
                     "Doctors": float(st.session_state.get("saved_r_Nurse_to_doctors",
                                      st.session_state.get("r_Nurse_to_doctors", "0.40")).replace(",", ".")),
@@ -2293,7 +2293,7 @@ if st.session_state.wizard_step == 1:
                 
                 max_provider_loops = st.number_input("Maximum number of loops (both types combined)", 0, 10, _init_ss("max_provider_loops", 3), 1, "%d", disabled=(pr_cap_form==0), key="pr_max_loops")
 
-                st.markdown("**Disposition or routing**")
+                st.markdown("**Disposition**")
                 pr_route_defaults = {
                     "Other staff": float(st.session_state.get("saved_r_Doctors_to_other_staff",
                                          st.session_state.get("r_Doctors_to_other_staff", "0.30")).replace(",", ".")),
