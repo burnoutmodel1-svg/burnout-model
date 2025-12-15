@@ -632,7 +632,7 @@ def plot_daily_utilization(all_metrics: List[Metrics], p: Dict, active_roles: Li
     This directly corresponds to the utilization burnout component.
     """
     fig, ax = plt.subplots(figsize=(8, 4), dpi=100)
-    colors = {'Administrative staff': '#1f77b4', 'Nurse': '#ff7f0e', 'Doctors': '#2ca02c', 'Other staff': '#d62728'}
+    colors = {'Administrative staff': '#1f77b4', 'Nurses': '#ff7f0e', 'Doctors': '#2ca02c', 'Other staff': '#d62728'}
     
     num_days = max(1, int(p["sim_minutes"] // DAY_MIN))
     open_minutes_per_day = p["open_minutes"]
