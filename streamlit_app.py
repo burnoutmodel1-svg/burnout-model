@@ -702,7 +702,7 @@ def plot_daily_utilization(all_metrics: List[Metrics], p: Dict, active_roles: Li
 
     ax.set_xlabel('Day', fontsize=11, fontweight='bold')
     ax.set_ylabel('Utilization (%)', fontsize=11, fontweight='bold')
-    ax.set_title('Daily Staff Utilization by Role', fontsize=12, fontweight='bold')
+    ax.set_title('Daily Staff Utilization', fontsize=12, fontweight='bold')
     
     if num_days > 0:
         x_ticks = np.arange(1, num_days + 1)
@@ -818,7 +818,7 @@ def plot_daily_throughput(all_metrics: List[Metrics], p: Dict, active_roles: Lis
     
     ax.set_xlabel('Day', fontsize=11, fontweight='bold')
     ax.set_ylabel('Tasks Completed', fontsize=11, fontweight='bold')
-    ax.set_title('Daily Number Processed', fontsize=12, fontweight='bold')
+    ax.set_title('Number Processed', fontsize=12, fontweight='bold')
     
     if num_days > 0:
         x_ticks = np.arange(1, num_days + 1)
@@ -1052,7 +1052,7 @@ def plot_daily_completion_rate(all_metrics: List[Metrics], p: Dict, active_roles
     
     ax.set_xlabel('Day', fontsize=11, fontweight='bold')
     ax.set_ylabel('Same-Day Completion Rate (%)', fontsize=11, fontweight='bold')
-    ax.set_title('Daily Same-Day Task Completion by Role', fontsize=12, fontweight='bold')
+    ax.set_title('Same-Day Task Completion', fontsize=12, fontweight='bold')
     
     if num_days > 0:
         x_ticks = np.arange(1, num_days + 1)
@@ -1118,7 +1118,7 @@ def plot_daily_workload(all_metrics: List[Metrics], p: Dict, active_roles: List[
     
     ax.set_xlabel('Day', fontsize=11, fontweight='bold')
     ax.set_ylabel('New Number Tasks', fontsize=11, fontweight='bold')
-    ax.set_title('Daily Workload by Role', fontsize=12, fontweight='bold')
+    ax.set_title('Daily Workload', fontsize=12, fontweight='bold')
     
     if num_days > 0:
         x_ticks = np.arange(1, num_days + 1)
@@ -1457,7 +1457,7 @@ def plot_missing_info_by_day(all_metrics: List[Metrics], p: Dict, active_roles: 
     
     ax.set_xlabel('Day', fontsize=11, fontweight='bold')
     ax.set_ylabel('Missing Info Events', fontsize=11, fontweight='bold')
-    ax.set_title('Missing Information or Call Backs', fontsize=12, fontweight='bold')
+    ax.set_title('Missing Information or Corrections', fontsize=12, fontweight='bold')
     
     if num_days > 0:
         x_ticks = np.arange(1, num_days + 1)
@@ -1527,7 +1527,7 @@ def plot_overtime_needed(all_metrics: List[Metrics], p: Dict, active_roles: List
     
     ax.set_xlabel('Role', fontsize=10)
     ax.set_ylabel('Additional Hours per Day per Person', fontsize=10)
-    ax.set_title('Overtime Needed to Clear Backlog', fontsize=11, fontweight='bold')
+    ax.set_title('Additional FTE Needed to Avoid Backlog', fontsize=11, fontweight='bold')
     ax.set_xticks(x)
     ax.set_xticklabels(active_roles, fontsize=9, rotation=15, ha='right')
     ax.set_ylim(bottom=0)
@@ -1956,28 +1956,49 @@ def create_summary_table(all_metrics: List[Metrics], p: Dict, burnout_data: Dict
         util_std = np.std(util_by_role[role], ddof=1) if len(util_by_role[role]) > 1 else 0.0
         
         burnout_val = burnout_by_role[role]
-
-        # Items completed per day (mean across replications)
+        
+        # NEW CODE STARTS HERE ============================================
+        # Items completed per day BY ROLE
+        role_prefix_map = {
+            "Administrative staff": "AD",
+            "Nurse": "NU",
+            "Doctors": "DO",
+            "Other staff": "OT"
+        }
+        prefix = role_prefix_map.get(role, "")
+        
+        num_days = max(1, int(p["sim_minutes"] // DAY_MIN))
         completed_per_day_list = []
+        
         for metrics in all_metrics:
-            completed = sum(1 for task_id, ct in metrics.task_completion_time.items()
-                           if task_id.startswith(prefix))
-            completed_per_day_list.append(completed / num_days)
+            for d in range(num_days):
+                day_start = d * DAY_MIN
+                day_end = day_start + p["open_minutes"]
+                
+                completed_today = sum(1 for task_id, ct in metrics.task_completion_time.items()
+                                     if day_start <= ct < day_end and task_id.startswith(prefix))
+                completed_per_day_list.append(completed_today)
         
         completed_mean = np.mean(completed_per_day_list) if completed_per_day_list else 0.0
         completed_std = np.std(completed_per_day_list, ddof=1) if len(completed_per_day_list) > 1 else 0.0
         
-        # Backlog at end of simulation (mean across replications)
-        backlog_list = []
-        for metrics in all_metrics:
-            # Get queue length at the end of simulation for this role
-            if metrics.queues[role]:
-                backlog_list.append(metrics.queues[role][-1])
-            else:
-                backlog_list.append(0)
+        # Backlog at end of each day BY ROLE
+        backlog_per_day_list = []
         
-        backlog_mean = np.mean(backlog_list) if backlog_list else 0.0
-        backlog_std = np.std(backlog_list, ddof=1) if len(backlog_list) > 1 else 0.0
+        for metrics in all_metrics:
+            for d in range(num_days):
+                day_end_time = d * DAY_MIN + p["open_minutes"]
+                
+                if len(metrics.time_stamps) > 0:
+                    closest_idx = min(range(len(metrics.time_stamps)), 
+                                    key=lambda i: abs(metrics.time_stamps[i] - day_end_time))
+                    backlog_per_day_list.append(metrics.queues[role][closest_idx])
+                else:
+                    backlog_per_day_list.append(0)
+        
+        backlog_mean = np.mean(backlog_per_day_list) if backlog_per_day_list else 0.0
+        backlog_std = np.std(backlog_per_day_list, ddof=1) if len(backlog_per_day_list) > 1 else 0.0
+        # NEW CODE ENDS HERE ==============================================
         
         table_data[col_name] = [
             f"{reroutes_mean:.1f} ± {reroutes_std:.1f}",
@@ -2654,11 +2675,11 @@ elif st.session_state.wizard_step == 2:
             help_icon("**Calculation:** Counts tasks completed each day across replications (mean ± SD). "
                  "**Interpretation:** Declining = falling behind; stable/increasing = keeping up. "
                  "Shaded area shows ±1 standard deviation across replications.",
-                 title="How is Daily Throughput calculated?")
+                 title="How is Number Processed calculated?")
         with col2:
             help_icon("**Calculation:** Tracks tasks waiting in each queue every minute (mean ± SD). "
                  "**Interpretation:** Persistent high queues = bottlenecks.",
-                 title="How is Queue Backlog Trend graph calculated?")
+                 title="How is Backlog graph calculated?")
 
         st.markdown("---")
         
@@ -2732,7 +2753,7 @@ elif st.session_state.wizard_step == 2:
                  "**Interpretation:** Higher completion rate = better same-day resolution. "
                  "Lower rate = more tasks carried over to next day. "
                  "This metric directly feeds into the Incompletion burnout component (Incompletion = 100 - Completion Rate).",
-                 title="How is Daily Same-Day Task Completion calculated?")
+                 title="How is Same-Day Task Completion calculated?")
         with col2:
             pass  # Empty column for balance
 
@@ -2764,7 +2785,7 @@ elif st.session_state.wizard_step == 2:
                  "Weighted by your custom burnout weights.\n\n"
                  "**Interpretation:** Scores above 50 (orange line) = moderate burnout. "
                  "Scores above 75 (red line) = high burnout risk.",
-                 title="How is Burnout Progression calculated?")
+                 title="How is Burnout calculated?")
         
         st.markdown("---")
         
@@ -2792,13 +2813,11 @@ elif st.session_state.wizard_step == 2:
                  "These trigger correction loops where staff must follow up for missing information.\n\n"
                  "**Interpretation:** High missing information rates indicate communication gaps, "
                  "incomplete documentation, or unclear processes.",
-                 title="How is Missing Information (Call Backs) calculated?")
+                 title="How is Missing Information or Corrections calculated?")
         
         st.markdown("---")
         
         # Third row: Overtime Needed
-        st.markdown("### Capacity Analysis")
-        
         col1, col2 = st.columns(2)
         with col1:
             fig_overtime = plot_overtime_needed(all_metrics, p, active_roles)
