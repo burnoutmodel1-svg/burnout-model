@@ -2093,7 +2093,18 @@ if st.session_state.wizard_step == 1:
         row: Dict[str, float] = {}
         for i, tgt in enumerate(targets):
             tgt_disabled = disabled_source or (tgt in ROLES and current_cap_map[tgt] == 0)
-            label_name = "Done" if tgt == DONE else tgt
+            if tgt == DONE:
+                label_name = "Done"
+            elif tgt == "Nurse":
+                label_name = "Send to Nurses"
+            elif tgt == "Doctors":
+                label_name = "Send to Doctors"
+            elif tgt == "Administrative staff":
+                label_name = "Send to Administrative Staff"
+            elif tgt == "Other staff":
+                label_name = "Send to Other Staff"
+            else:
+                label_name = tgt
             key_name = f"r_{from_role}_{'done' if tgt==DONE else label_name.replace(' ','_').lower()}"
             default_val = float(defaults.get(tgt, 0.0))
             with cols[i]:
