@@ -808,7 +808,7 @@ def plot_daily_throughput(all_metrics: List[Metrics], p: Dict, active_roles: Lis
         x = np.arange(1, num_days + 1)
         
         # Plot line with markers for this role
-        ax.plot(x, means, color=colors.get('Nurses' if role == 'Nurse' else role, '#333333'), 
+        ax.plot(x, daily_means, color=colors.get('Nurses' if role == 'Nurse' else role, '#333333'), 
                linewidth=2.5, marker='o', markersize=6, label='Nurses' if role == 'Nurse' else role, alpha=0.9)
         
         # Add confidence band (±1 SD)
