@@ -746,7 +746,7 @@ def plot_queue_over_time(all_metrics: List[Metrics], p: Dict, active_roles: List
             x = np.arange(1, num_days + 1)
             
             # Plot line with markers
-            ax.plot(x, means, color=colors.get('Nurses' if role == 'Nurse' else role, '#333333'), 
+            ax.plot(x, mean_daily, color=colors.get('Nurses' if role == 'Nurse' else role, '#333333'), 
                linewidth=2.5, marker='o', markersize=6, label='Nurses' if role == 'Nurse' else role, alpha=0.9)
             
             # Add confidence band
