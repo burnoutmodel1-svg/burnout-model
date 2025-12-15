@@ -1524,7 +1524,7 @@ def plot_overtime_needed(all_metrics: List[Metrics], p: Dict, active_roles: List
     ax.set_ylabel('Additional Hours per Day per Person', fontsize=10)
     ax.set_title('Additional FTE Needed to Avoid Backlog', fontsize=11, fontweight='bold')
     ax.set_xticks(x)
-    ax.set_xticklabels(active_roles, fontsize=9, rotation=15, ha='right')
+    ax.set_xticklabels(['Nurses' if role == 'Nurse' else role for role in active_roles], fontsize=9, rotation=15, ha='right')
     ax.set_ylim(bottom=0)
     ax.legend(loc='upper right', fontsize=8)
     ax.grid(True, alpha=0.3, axis='y')
