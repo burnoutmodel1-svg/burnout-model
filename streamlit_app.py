@@ -2108,7 +2108,7 @@ if st.session_state.wizard_step == 1:
             key_name = f"r_{from_role}_{'done' if tgt==DONE else label_name.replace(' ','_').lower()}"
             default_val = float(defaults.get(tgt, 0.0))
             with cols[i]:
-                val = prob_input(f"to {label_name} ({from_role})", key=key_name, 
+                val = prob_input(f"{label_name}", key=key_name, 
                                default=(0.0 if tgt_disabled else default_val), disabled=tgt_disabled)
                 if tgt_disabled:
                     val = 0.0
