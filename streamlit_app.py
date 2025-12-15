@@ -1726,7 +1726,7 @@ def create_summary_table(all_metrics: List[Metrics], p: Dict, burnout_data: Dict
     """
     num_reps = len(all_metrics)
     
-    # Missing info by role (INSUFF events - corrections loops)
+    # Missing info by role (INSUFF events - correction loops)
     missing_info_by_role = {r: [] for r in active_roles}
     for metrics in all_metrics:
         role_missing = {r: 0 for r in active_roles}
@@ -2196,7 +2196,7 @@ if st.session_state.wizard_step == 1:
                 svc_frontdesk = st.slider("Mean processing time (minutes)", 0.0, 30.0, _init_ss("svc_frontdesk", 3.0), 0.5, disabled=(fd_cap_form==0),
                                       help="Average time to complete a task")
             
-                st.markdown("**corrections Loops**")            
+                st.markdown("**Correction Loops**")            
                 st.markdown("*Missing Information (patient-side):*")
                 cFDL1, cFDL2 = st.columns(2)
                 with cFDL1:
@@ -2237,7 +2237,7 @@ if st.session_state.wizard_step == 1:
                 with cNS2:
                     svc_nurse = st.slider("Non-protocol Processing time (minutes)", 0.0, 40.0, _init_ss("svc_nurse", 5.0), 0.5, disabled=(nu_cap_form==0))
                 
-                st.markdown("**corrections Loops**")
+                st.markdown("**Correction Loops**")
                 st.caption("Insufficient information = patient-side delays. corrections = internal errors.")
                 
                 st.markdown("*Missing Information (patient-side):*")
@@ -2274,7 +2274,7 @@ if st.session_state.wizard_step == 1:
                 st.markdown("**Processing time**")
                 svc_provider = st.slider("Mean Processing time (minutes)", 0.0, 480.0, _init_ss("svc_provider", 7.0), 0.5, disabled=(pr_cap_form==0))
             
-                st.markdown("**corrections Loops**")
+                st.markdown("**Correction Loops**")
                 st.caption("Insufficient information = patient-side delays. corrections = internal errors.")
                 
                 st.markdown("*Missing Information (patient-side):*")
@@ -2308,7 +2308,7 @@ if st.session_state.wizard_step == 1:
                 st.markdown("**Processing time**")
                 svc_backoffice = st.slider("Mean Processing time (minutes)", 0.0, 480.0, _init_ss("svc_backoffice", 5.0), 0.5, disabled=(bo_cap_form==0))
             
-                st.markdown("**corrections Loops**")
+                st.markdown("**Correction Loops**")
                 st.caption("Insufficient information = patient-side delays. corrections = internal errors.")
                 
                 st.markdown("*Missing Information (patient-side):*")
@@ -2754,7 +2754,7 @@ elif st.session_state.wizard_step == 2:
                  title="How is Rerouting (Inappropriate Receipt) calculated?")
         with col2:
             help_icon("**Calculation:** Counts 'INSUFF' events (insufficient information) per role per day. "
-                 "These trigger corrections loops where staff must follow up for missing information.\n\n"
+                 "These trigger correction loops where staff must follow up for missing information.\n\n"
                  "**Interpretation:** High missing information rates indicate communication gaps, "
                  "incomplete documentation, or unclear processes.",
                  title="How is Missing Information (Call Backs) calculated?")
