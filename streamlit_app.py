@@ -692,8 +692,8 @@ def plot_daily_utilization(all_metrics: List[Metrics], p: Dict, active_roles: Li
         x = np.arange(1, num_days + 1)
         
         # Plot line
-        ax.plot(x, means, color=colors.get(role, '#333333'), 
-               linewidth=2.5, marker='o', markersize=6, label=role, alpha=0.9)
+        ax.plot(x, means, color=colors.get('Nurses' if role == 'Nurse' else role, '#333333'), 
+               linewidth=2.5, marker='o', markersize=6, label='Nurses' if role == 'Nurse' else role, alpha=0.9)
         
         # Add confidence band
         upper = [means[i] + stds[i] for i in range(num_days)]
@@ -718,7 +718,7 @@ def plot_daily_utilization(all_metrics: List[Metrics], p: Dict, active_roles: Li
     
 def plot_queue_over_time(all_metrics: List[Metrics], p: Dict, active_roles: List[str]):
     fig, ax = plt.subplots(figsize=(8, 4), dpi=100)
-    colors = {'Administrative staff': '#1f77b4', 'Nurse': '#ff7f0e', 'Doctors': '#2ca02c', 'Other staff': '#d62728'}
+    colors = {'Administrative staff': '#1f77b4', 'Nurses': '#ff7f0e', 'Doctors': '#2ca02c', 'Other staff': '#d62728'}
     
     num_days = max(1, int(p["sim_minutes"] // DAY_MIN))
     open_minutes = p["open_minutes"]
@@ -746,8 +746,8 @@ def plot_queue_over_time(all_metrics: List[Metrics], p: Dict, active_roles: List
             x = np.arange(1, num_days + 1)
             
             # Plot line with markers
-            ax.plot(x, mean_daily, color=colors.get(role, '#333333'), 
-                   linewidth=2.5, marker='o', markersize=7, label=role, alpha=0.9)
+            ax.plot(x, means, color=colors.get('Nurses' if role == 'Nurse' else role, '#333333'), 
+               linewidth=2.5, marker='o', markersize=6, label='Nurses' if role == 'Nurse' else role, alpha=0.9)
             
             # Add confidence band
             ax.fill_between(x, mean_daily - std_daily, mean_daily + std_daily,
@@ -774,7 +774,7 @@ def plot_daily_throughput(all_metrics: List[Metrics], p: Dict, active_roles: Lis
     Line graph showing daily throughput (tasks completed) by role over time with SD shading.
     """
     fig, ax = plt.subplots(figsize=(8, 4), dpi=100)
-    colors = {'Administrative staff': '#1f77b4', 'Nurse': '#ff7f0e', 'Doctors': '#2ca02c', 'Other staff': '#d62728'}
+    colors = {'Administrative staff': '#1f77b4', 'Nurses': '#ff7f0e', 'Doctors': '#2ca02c', 'Other staff': '#d62728'}
     
     num_days = max(1, int(p["sim_minutes"] // DAY_MIN))
     open_minutes = p["open_minutes"]
@@ -808,8 +808,8 @@ def plot_daily_throughput(all_metrics: List[Metrics], p: Dict, active_roles: Lis
         x = np.arange(1, num_days + 1)
         
         # Plot line with markers for this role
-        ax.plot(x, daily_means, color=colors.get(role, '#333333'), linewidth=2.5, marker='o', 
-                markersize=6, label=role, alpha=0.9)
+        ax.plot(x, means, color=colors.get('Nurses' if role == 'Nurse' else role, '#333333'), 
+               linewidth=2.5, marker='o', markersize=6, label='Nurses' if role == 'Nurse' else role, alpha=0.9)
         
         # Add confidence band (±1 SD)
         upper_bound = [daily_means[i] + daily_stds[i] for i in range(num_days)]
