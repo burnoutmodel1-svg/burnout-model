@@ -2204,7 +2204,7 @@ if st.session_state.wizard_step == 1:
                 with cFDL2:
                     fd_insuff_delay = st.slider("Delay to obtain information (min)", 0.0, 480.0, _init_ss("fd_insuff_delay", 240.0), 1.0, disabled=(fd_cap_form==0))
             
-                st.markdown("*corrections (internal errors):*")
+                st.markdown("*Corrections (internal errors):*")
                 cFDL3, cFDL4 = st.columns(2)
                 with cFDL3:
                     p_fd_corrections = st.slider("Percent with corrections needed", 0.0, 1.0, _init_ss("p_fd_corrections", 0.10), 0.01, disabled=(fd_cap_form==0), key="fd_p_corrections")
@@ -2247,7 +2247,7 @@ if st.session_state.wizard_step == 1:
                 with cNUL2:
                     nurse_insuff_delay = st.slider("Delay to obtain information (min)", 0.0, 480.0, _init_ss("nurse_insuff_delay", 240.0), 1.0, disabled=(nu_cap_form==0), key="nu_insuff_delay")
                 
-                st.markdown("*corrections (internal errors):*")
+                st.markdown("*Corrections (internal errors):*")
                 cNUL3, cNUL4 = st.columns(2)
                 with cNUL3:
                     p_nurse_corrections = st.slider("Percent with corrections needed", 0.0, 1.0, _init_ss("p_nurse_corrections", 0.10), 0.01, disabled=(nu_cap_form==0), key="nu_p_corrections")
@@ -2284,7 +2284,7 @@ if st.session_state.wizard_step == 1:
                 with cPRL2:
                     provider_insuff_delay = st.slider("Delay to obtain information (min)", 0.0, 480.0, _init_ss("provider_insuff_delay", 300.0), 1.0, disabled=(pr_cap_form==0), key="pr_insuff_delay")
                 
-                st.markdown("*corrections (internal errors):*")
+                st.markdown("*Corrections (internal errors):*")
                 cPRL3, cPRL4 = st.columns(2)
                 with cPRL3:
                     p_provider_corrections = st.slider("Percent with corrections needed", 0.0, 1.0, _init_ss("p_provider_corrections", 0.10), 0.01, disabled=(pr_cap_form==0), key="pr_p_corrections")
