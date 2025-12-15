@@ -1939,7 +1939,7 @@ def create_summary_table(all_metrics: List[Metrics], p: Dict, burnout_data: Dict
     
     # Build the table data
     table_data = {
-        "Metric": ["Re-routes", "Missing info", "Workload % util", "Burnout"]
+        "Metric (daily)": ["Re-routes", "Missing info", "Workload % utilization", "Burnout", "Items completed", "Backlog"]
     }
     
     # Add columns for each role
@@ -1956,12 +1956,36 @@ def create_summary_table(all_metrics: List[Metrics], p: Dict, burnout_data: Dict
         util_std = np.std(util_by_role[role], ddof=1) if len(util_by_role[role]) > 1 else 0.0
         
         burnout_val = burnout_by_role[role]
+
+        # Items completed per day (mean across replications)
+        completed_per_day_list = []
+        for metrics in all_metrics:
+            completed = sum(1 for task_id, ct in metrics.task_completion_time.items()
+                           if task_id.startswith(prefix))
+            completed_per_day_list.append(completed / num_days)
+        
+        completed_mean = np.mean(completed_per_day_list) if completed_per_day_list else 0.0
+        completed_std = np.std(completed_per_day_list, ddof=1) if len(completed_per_day_list) > 1 else 0.0
+        
+        # Backlog at end of simulation (mean across replications)
+        backlog_list = []
+        for metrics in all_metrics:
+            # Get queue length at the end of simulation for this role
+            if metrics.queues[role]:
+                backlog_list.append(metrics.queues[role][-1])
+            else:
+                backlog_list.append(0)
+        
+        backlog_mean = np.mean(backlog_list) if backlog_list else 0.0
+        backlog_std = np.std(backlog_list, ddof=1) if len(backlog_list) > 1 else 0.0
         
         table_data[col_name] = [
             f"{reroutes_mean:.1f} ± {reroutes_std:.1f}",
             f"{missing_mean:.1f} ± {missing_std:.1f}",
             f"{util_mean:.1f}% ± {util_std:.1f}%",
-            f"{burnout_val:.1f}"
+            f"{burnout_val:.1f}",
+            f"{completed_mean:.1f} ± {completed_std:.1f}",
+            f"{backlog_mean:.1f} ± {backlog_std:.1f}"
         ]
     
     df = pd.DataFrame(table_data)
@@ -2213,7 +2237,7 @@ if st.session_state.wizard_step == 1:
                 with cFDL1:
                     p_fd_insuff = st.slider("Percent with insufficient information", 0.0, 1.0, _init_ss("p_fd_insuff", 0.25), 0.01, disabled=(fd_cap_form==0), key="fd_p_insuff")
                 with cFDL2:
-                    fd_insuff_delay = st.slider("Delay to obtain information (min)", 0.0, 480.0, _init_ss("fd_insuff_delay", 240.0), 1.0, disabled=(fd_cap_form==0))
+                    fd_insuff_delay = st.slider("Delay to obtain information (min)", 0.0, 2400.0, _init_ss("fd_insuff_delay", 240.0), 1.0, disabled=(fd_cap_form==0))
             
                 st.markdown("*Corrections (internal errors):*")
                 cFDL3, cFDL4 = st.columns(2)
@@ -2243,10 +2267,10 @@ if st.session_state.wizard_step == 1:
                 st.markdown("**Processing times**")
                 cNS1, cNS2 = st.columns(2)
                 with cNS1:
-                    svc_nurse_protocol = st.slider("Protocol Processing time (minutes)", 0.0, 30.0, _init_ss("svc_nurse_protocol", 2.0), 0.5, disabled=(nu_cap_form==0))
-                    p_protocol = st.slider("Probability of using protocol", 0.0, 1.0, _init_ss("p_protocol", 0.30), 0.05, disabled=(nu_cap_form==0))
+                    svc_nurse_protocol = st.slider("Standard process time (minutes)", 0.0, 30.0, _init_ss("svc_nurse_protocol", 2.0), 0.5, disabled=(nu_cap_form==0))
+                    p_protocol = st.slider("Percent follow standard process", 0.0, 1.0, _init_ss("p_protocol", 0.30), 0.05, disabled=(nu_cap_form==0))
                 with cNS2:
-                    svc_nurse = st.slider("Non-protocol Processing time (minutes)", 0.0, 40.0, _init_ss("svc_nurse", 5.0), 0.5, disabled=(nu_cap_form==0))
+                    svc_nurse = st.slider("Non-standard process time (minutes)", 0.0, 40.0, _init_ss("svc_nurse", 5.0), 0.5, disabled=(nu_cap_form==0))
                 
                 st.markdown("**Correction Loops**")
                 st.caption("Insufficient information = patient-side delays. corrections = internal errors.")
@@ -2256,7 +2280,7 @@ if st.session_state.wizard_step == 1:
                 with cNUL1:
                     p_nurse_insuff = st.slider("Percent with insufficient information", 0.0, 1.0, _init_ss("p_nurse_insuff", 0.20), 0.01, disabled=(nu_cap_form==0), key="nu_p_insuff")
                 with cNUL2:
-                    nurse_insuff_delay = st.slider("Delay to obtain information (min)", 0.0, 480.0, _init_ss("nurse_insuff_delay", 240.0), 1.0, disabled=(nu_cap_form==0), key="nu_insuff_delay")
+                    nurse_insuff_delay = st.slider("Delay to obtain information (min)", 0.0, 2400.0, _init_ss("nurse_insuff_delay", 240.0), 1.0, disabled=(nu_cap_form==0), key="nu_insuff_delay")
                 
                 st.markdown("*Corrections (internal errors):*")
                 cNUL3, cNUL4 = st.columns(2)
@@ -2293,7 +2317,7 @@ if st.session_state.wizard_step == 1:
                 with cPRL1:
                     p_provider_insuff = st.slider("Percent with insufficient information", 0.0, 1.0, _init_ss("p_provider_insuff", 0.15), 0.01, disabled=(pr_cap_form==0), key="pr_p_insuff")
                 with cPRL2:
-                    provider_insuff_delay = st.slider("Delay to obtain information (min)", 0.0, 480.0, _init_ss("provider_insuff_delay", 300.0), 1.0, disabled=(pr_cap_form==0), key="pr_insuff_delay")
+                    provider_insuff_delay = st.slider("Delay to obtain information (min)", 0.0, 2400.0, _init_ss("provider_insuff_delay", 300.0), 1.0, disabled=(pr_cap_form==0), key="pr_insuff_delay")
                 
                 st.markdown("*Corrections (internal errors):*")
                 cPRL3, cPRL4 = st.columns(2)
@@ -2327,7 +2351,7 @@ if st.session_state.wizard_step == 1:
                 with cBOL1:
                     p_backoffice_insuff = st.slider("Percent with insufficient information", 0.0, 1.0, _init_ss("p_backoffice_insuff", 0.18), 0.01, disabled=(bo_cap_form==0), key="bo_p_insuff")
                 with cBOL2:
-                    backoffice_insuff_delay = st.slider("Delay to obtain information (min)", 0.0, 480.0, _init_ss("backoffice_insuff_delay", 180.0), 1.0, disabled=(bo_cap_form==0), key="bo_insuff_delay")
+                    backoffice_insuff_delay = st.slider("Delay to obtain information (min)", 0.0, 2400.0, _init_ss("backoffice_insuff_delay", 180.0), 1.0, disabled=(bo_cap_form==0), key="bo_insuff_delay")
                 
                 st.markdown("*Corrections (internal errors):*")
                 cBOL3, cBOL4 = st.columns(2)
@@ -2607,9 +2631,9 @@ elif st.session_state.wizard_step == 2:
     st.markdown(f"## Results")
     
     # Summary Table
-    st.markdown("### Summary Table")
-    summary_df = create_summary_table(all_metrics, p, burnout_data, active_roles)
-    st.dataframe(summary_df, width="stretch", hide_index=True)
+    with st.expander("Summary Table", expanded=True):
+        summary_df = create_summary_table(all_metrics, p, burnout_data, active_roles)
+        st.dataframe(summary_df, width="stretch", hide_index=True)
 
     # System Performance - Collapsible
     with st.expander("System Performance", expanded=False):
@@ -2660,7 +2684,7 @@ elif st.session_state.wizard_step == 2:
             pass  # Empty column for balance
 
     # Response Times (Patient Care) - Collapsible
-    with st.expander("Response Times (Patient Care)", expanded=False):
+    with st.expander("Completion Times", expanded=False):
         
         col1, col2 = st.columns(2)
         with col1:
@@ -2713,7 +2737,7 @@ elif st.session_state.wizard_step == 2:
             pass  # Empty column for balance
 
     # Workload - Collapsible
-    with st.expander("Workload", expanded=False):
+    with st.expander("Workload burden and burnout", expanded=False):
         
         # First row: Daily Workload and Burnout Over Days
         col1, col2 = st.columns(2)
