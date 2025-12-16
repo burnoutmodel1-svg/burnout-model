@@ -858,8 +858,12 @@ def plot_response_time_distribution(all_metrics: List[Metrics], p: Dict):
     max_hours = min(sim_days * 24, 336)  # Cap at 14 days (336 hours) only if sim is longer
     
     # Convert to hours and cap at max_hours
-    all_turnaround_hours = [min(t / 60.0, max_hours) for t in all_turnaround_times]
+    all_turnaround_hours = [t / 60.0 for t in all_turnaround_times]
     
+    # Filter out tasks that exceed max_hours
+    all_turnaround_hours_filtered = [h for h in all_turnaround_hours if h < max_hours]
+    all_turnaround_hours = all_turnaround_hours_filtered   
+
     # Define bins: 3-hour bins up to max_hours
     bin_edges_hours = np.arange(0, max_hours + 3, 3)
     
