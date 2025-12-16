@@ -443,7 +443,7 @@ def monitor(env, s: CHCSystem):
         s.m.time_stamps.append(env.now)
         for r in ROLES:
             res = s.role_to_res[r]
-            self_q = len(res.queue) if res is not None else 0
+            self_q = len(res.queue) + res.count if res is not None else 0
             s.m.queues[r].append(self_q)
         yield env.timeout(1)
 
