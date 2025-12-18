@@ -2401,7 +2401,7 @@ if st.session_state.wizard_step == 1:
             route["Doctors"] = pr_route
             route["Other staff"] = bo_route
 
-            with st.expander("Contributors to Burnout - Relative Weights", expanded=False):
+        with st.expander("Contributors to Burnout - Relative Weights", expanded=False):
                 st.caption("Assign each factor a weight between 0 and 10 (0 = no contribution, 10 = maximum contribution)")
 
                 col1, col2 = st.columns(2)
