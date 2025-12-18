@@ -2165,7 +2165,6 @@ if st.session_state.wizard_step == 1:
                                    help="Number of clinic operating days to simulate")
             open_hours = st.number_input("Hours open per day", 1, 24, _init_ss("open_hours", 8), 1, "%d",
                                       help="Number of hours the clinic is open each day")
-
         
             cv_speed_label = st.select_slider(
                 "Task speed variability",
@@ -2182,6 +2181,10 @@ if st.session_state.wizard_step == 1:
                 "Very High": 0.7
             }
             cv_speed = cv_speed_map[cv_speed_label]
+
+            num_replications = st.number_input("Number of replications", 1, 1000, _init_ss("num_replications", 30), 1, "%d", 
+                                      help="Number of independent simulation runs")
+
     
         seed = 42  # Fixed seed for reproducibility
 
@@ -2239,9 +2242,6 @@ if st.session_state.wizard_step == 1:
             with cBO3:
                 avail_bo = st.number_input("Availability (min/day)", 0, 480, _init_ss("avail_bo", 180), 1, "%d", disabled=(bo_cap_form==0), key="avail_bo_input",
                                help="Minutes per day available for work (max = hours open × 60)")
-
-        num_replications = st.number_input("Number of replications", 1, 1000, _init_ss("num_replications", 30), 1, "%d", 
-                                      help="Number of independent simulation runs")
 
         with st.expander("Processing times & routing", expanded=False):
             with st.expander("Administrative staff", expanded=False):
