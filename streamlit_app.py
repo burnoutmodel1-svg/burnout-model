@@ -2165,6 +2165,23 @@ if st.session_state.wizard_step == 1:
                                    help="Number of clinic operating days to simulate")
             open_hours = st.number_input("Hours open per day", 1, 24, _init_ss("open_hours", 8), 1, "%d",
                                       help="Number of hours the clinic is open each day")
+
+        
+            cv_speed_label = st.select_slider(
+                "Task speed variability",
+                options=["Very Low", "Low", "Moderate", "High", "Very High"],
+                value=_init_ss("cv_speed_label", "Moderate"),
+                help="Variation in task completion times"
+            )
+        
+            cv_speed_map = {
+                "Very Low": 0.1,
+                "Low": 0.2,
+                "Moderate": 0.3,
+                "High": 0.5,
+                "Very High": 0.7
+            }
+            cv_speed = cv_speed_map[cv_speed_label]
     
         seed = 42  # Fixed seed for reproducibility
 
@@ -2222,25 +2239,6 @@ if st.session_state.wizard_step == 1:
             with cBO3:
                 avail_bo = st.number_input("Availability (min/day)", 0, 480, _init_ss("avail_bo", 180), 1, "%d", disabled=(bo_cap_form==0), key="avail_bo_input",
                                help="Minutes per day available for work (max = hours open × 60)")
-
-        st.markdown("  Simulation Settings")
-        st.caption("Configure variability and number of simulation runs")
-    
-        cv_speed_label = st.select_slider(
-            "Task speed variability",
-            options=["Very Low", "Low", "Moderate", "High", "Very High"],
-            value=_init_ss("cv_speed_label", "Moderate"),
-            help="Variation in task completion times"
-        )
-    
-        cv_speed_map = {
-            "Very Low": 0.1,
-            "Low": 0.2,
-            "Moderate": 0.3,
-            "High": 0.5,
-            "Very High": 0.7
-        }
-        cv_speed = cv_speed_map[cv_speed_label]
 
         num_replications = st.number_input("Number of replications", 1, 1000, _init_ss("num_replications", 30), 1, "%d", 
                                       help="Number of independent simulation runs")
